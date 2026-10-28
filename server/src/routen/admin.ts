@@ -2,6 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ROLLEN } from '../../../shared/types.ts';
+import { emailSenden, graphKonfigLesen, graphKonfigSpeichern } from '../email.ts';
 import { bereichPruefen, clientIp } from '../ip.ts';
 import {
   benutzerListe,
@@ -161,4 +162,33 @@ export function adminRouten(app: FastifyInstance): void {
   });
 
   app.get('/api/admin/protokoll', async (req) => protokollListe(mitRolle(req, 'admin').db));
+
+  // ---------- E-Mail (Microsoft Graph) ----------
+
+  app.get('/api/admin/email', async (req) => graphKonfigLesen(mitRolle(req, 'admin').db));
+
+  app.put('/api/admin/email', async (req) => {
+    const k = mitRolle(req, 'admin');
+    const d = z
+      .object({
+        tenantId: z.string().trim().min(1, 'Tenant-ID fehlt').max(200),
+        clientId: z.string().trim().min(1, 'Client-ID fehlt').max(200),
+        clientSecret: z.string().max(500).nullable(),
+        absender: z.string().trim().toLowerCase().email('Absender: ungültige E-Mail-Adresse'),
+        aktiv: z.boolean(),
+      })
+      .parse(req.body);
+    await graphKonfigSpeichern(k.db, { ...d, clientSecret: d.clientSecret?.trim() || null });
+    await protokollieren(k.db, k.sitzung.email, 'E-Mail-Einstellungen geändert', 'Graph', { tenantId: d.tenantId, clientId: d.clientId, absender: d.absender, aktiv: d.aktiv, neuesSecret: Boolean(d.clientSecret) });
+    return { ok: true };
+  });
+
+  app.post('/api/admin/email/test', async (req) => {
+    const k = mitRolle(req, 'admin');
+    const { an } = z.object({ an: z.string().trim().email() }).parse(req.body);
+    await emailSenden(k.db, k.mandant.id, { an: [an], betreff: 'Testnachricht', text: 'Der E-Mail-Versand ist eingerichtet.', anhaenge: [] });
+    await k.db.updateTable('graph_konfig').set({ letzter_test: new Date().toISOString() }).where('id', '=', 1).execute();
+    await protokollieren(k.db, k.sitzung.email, 'Test-E-Mail gesendet', an);
+    return { ok: true };
+  });
 }

@@ -39,4 +39,6 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 - 2026-10-28: Stufe 2 gebaut (ohne E-Mail = 2b): Verkauf in Schritten (`src/seiten/Verkauf.tsx`), Vorgang/Suche
   (`Vorgang.tsx`), Logik `server/src/verkauf.ts`, PDFs `server/src/pdf.ts` (pdfmake 0.3.11, nur Standardschriften),
   Berechnung gemeinsam in `shared/verkauf.ts`, Migration 2 (vorgang, zahlung, dokument, nummernkreis). Tests grün.
-  Offen: PDF-Layout mit echten Firmendaten prüfen, Bedienung auf dem iPad testen, nicht committet.
+  Offen: PDF-Layout mit echten Firmendaten prüfen, Bedienung auf dem iPad testen.
+- 2026-10-28: Stufe 2b: E-Mail über Microsoft Graph (`server/src/email.ts`), Client-Secret verschlüsselt mit
+  `CR_SECRET_KEY` (`geheim.ts`, Terraform `random_password`). Je Mandant: App-Registrierung mit Mail.Send nötig.

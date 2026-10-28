@@ -142,4 +142,22 @@ export interface MandantDB {
     sha256: string;
     pdf: Buffer;
   };
+  graph_konfig: {
+    id: number;
+    tenant_id: string;
+    client_id: string;
+    client_secret_enc: string;
+    absender: string;
+    aktiv: number;
+    letzter_test: string | null;
+  };
+  email_versand: {
+    id: Generated<number>;
+    vorgang_id: number;
+    zeit: string;
+    an: string;
+    betreff: string;
+    anhaenge: string;
+    person: string;
+  };
 }

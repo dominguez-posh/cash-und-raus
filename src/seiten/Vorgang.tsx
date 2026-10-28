@@ -20,7 +20,8 @@ import { Betrag, darfStornieren, darfVerkaufen, Summentabelle, Wahl } from './Ve
 const ZWECK = { anzahlung: 'Anzahlung', restzahlung: 'Restzahlung', erstattung: 'Erstattung' } as const;
 
 export function VorgangAnsicht({ ich, vorgang: v, neuLaden }: { ich: Ich; vorgang: Vorgang; neuLaden: () => Promise<void> }) {
-  const [dialog, setDialog] = useState<'zahlung' | 'storno' | null>(null);
+  const [dialog, setDialog] = useState<'zahlung' | 'storno' | 'email' | null>(null);
+  const emails = useLaden(() => api.get<EmailEintrag[]>(`/api/vorgaenge/${v.id}/emails`), [v.id]);
   const pdf = (art: string, zahlung?: number) => `/api/vorgaenge/${v.id}/pdf/${art}${zahlung ? `?zahlung=${zahlung}` : ''}`;
   const storno = v.art === 'storno';
   const offen = v.offenCent > 0 && !v.storno;
@@ -60,6 +61,12 @@ export function VorgangAnsicht({ ich, vorgang: v, neuLaden }: { ich: Ich; vorgan
               <button className="kachel knopf-kachel primaer" onClick={() => setDialog('zahlung')}>
                 <h3>Zahlung erfassen</h3>
                 <span>offen {euro(v.offenCent)}</span>
+              </button>
+            )}
+            {darfVerkaufen(ich) && (
+              <button className="kachel knopf-kachel" onClick={() => setDialog('email')}>
+                <h3>Per E-Mail senden</h3>
+                <span className="leise">{emails.daten?.length ? `zuletzt an ${emails.daten[0]!.an}` : 'Rechnung, Lieferschein als PDF'}</span>
               </button>
             )}
             {!v.storno && darfStornieren(ich) && (
@@ -121,6 +128,25 @@ export function VorgangAnsicht({ ich, vorgang: v, neuLaden }: { ich: Ich; vorgan
         </div>
       )}
 
+      {emails.daten && emails.daten.length > 0 && (
+        <div className="karte">
+          <h2>Gesendete E-Mails</h2>
+          <table>
+            <tbody>
+              {emails.daten.map((m) => (
+                <tr key={m.id}>
+                  <td>{datumZeit(m.zeit)}</td>
+                  <td>{m.an}</td>
+                  <td>{m.anhaenge.join(', ')}</td>
+                  <td className="leise">{m.person}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {dialog === 'email' && <EmailDialog v={v} schliessen={() => setDialog(null)} fertig={emails.neu} />}
       {dialog === 'zahlung' && <ZahlungDialog v={v} schliessen={() => setDialog(null)} fertig={neuLaden} />}
       {dialog === 'storno' && <StornoDialog v={v} schliessen={() => setDialog(null)} />}
     </div>
@@ -186,6 +212,58 @@ function StornoDialog({ v, schliessen }: { v: Vorgang; schliessen: () => void })
         <Meldung>{a.fehler}</Meldung>
         <div className="knopfreihe">
           <button className="primaer gross gefahr-voll" onClick={stornieren} disabled={a.laeuft || grund.trim().length < 3}>Stornieren</button>
+          <button className="gross" onClick={schliessen}>Abbrechen</button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+interface EmailEintrag {
+  id: number;
+  zeit: string;
+  an: string;
+  betreff: string;
+  anhaenge: string[];
+  person: string;
+}
+
+function EmailDialog({ v, schliessen, fertig }: { v: Vorgang; schliessen: () => void; fertig: () => void }) {
+  const [an, setAn] = useState(v.kunde.email);
+  const [text, setText] = useState('');
+  const [anhaenge, setAnhaenge] = useState<string[]>(['rechnung']);
+  const a = useAktion();
+  const umschalten = (x: string) => setAnhaenge(anhaenge.includes(x) ? anhaenge.filter((y) => y !== x) : [...anhaenge, x]);
+  const senden = () =>
+    a.ausfuehren(async () => {
+      await api.post(`/api/vorgaenge/${v.id}/email`, { an, text, anhaenge });
+      fertig();
+      schliessen();
+    });
+  const moeglich: [string, string][] = [['rechnung', v.art === 'storno' ? 'Stornorechnung' : 'Rechnung']];
+  if (v.art !== 'storno') moeglich.push(['lieferschein', 'Lieferschein'], ['kommission', 'Kommission']);
+  return (
+    <Dialog titel={`${v.nummer} per E-Mail senden`} schliessen={schliessen}>
+      <div className="touch stapel">
+        <Feld titel="Empfänger">
+          <input type="email" value={an} onChange={(e) => setAn(e.target.value)} autoFocus />
+        </Feld>
+        <div className="feld">
+          Anhänge
+          <div className="wahl">
+            {moeglich.map(([k, t]) => (
+              <button key={k} className={anhaenge.includes(k) ? 'aktiv' : ''} aria-pressed={anhaenge.includes(k)} onClick={() => umschalten(k)} type="button">
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Feld titel="Nachricht (leer = Standardtext)">
+          <textarea value={text} onChange={(e) => setText(e.target.value)} />
+        </Feld>
+        <Meldung>{a.fehler}</Meldung>
+        <div className="knopfreihe">
+          <button className="primaer gross" onClick={senden} disabled={a.laeuft || !an || !anhaenge.length}>Senden</button>
           <button className="gross" onClick={schliessen}>Abbrechen</button>
         </div>
       </div>

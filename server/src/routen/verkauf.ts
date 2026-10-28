@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Rolle } from '../../../shared/types.ts';
 import { LESE_ROLLEN, STORNO_ROLLEN, VERKAUF_ROLLEN, type VerkaufVorgaben, ZAHLMITTEL } from '../../../shared/verkauf.ts';
+import { emailSenden } from '../email.ts';
 import { einstellungenLesen, protokollieren } from '../mandant.ts';
 import { PDF_ARTEN, type PdfArt } from '../pdf.ts';
 import { HttpFehler, mitRolle } from '../sitzung.ts';
@@ -106,6 +107,50 @@ export function verkaufRouten(app: FastifyInstance): void {
     const d = z.object({ grund: z.string().trim().min(3, 'Bitte einen Grund angeben').max(500), mittel: z.enum(ZAHLMITTEL) }).parse(req.body);
     const id = await stornieren(k.db, idAus(req), d, k);
     return { id };
+  });
+
+  app.post<{ Params: { id: string } }>('/api/vorgaenge/:id/email', async (req) => {
+    const k = kontext(req, VERKAUF_ROLLEN);
+    const id = idAus(req);
+    const d = z
+      .object({
+        an: z.string().trim().email('Ungültige Empfängeradresse'),
+        text: z.string().max(4000).default(''),
+        anhaenge: z.array(z.enum(['rechnung', 'lieferschein', 'kommission'])).min(1, 'Mindestens ein Anhang'),
+      })
+      .parse(req.body);
+    const v = await vorgangLesen(k.db, id, k.sichtbar);
+    if (v.status !== 'festgeschrieben') throw new HttpFehler(409, 'Nur festgeschriebene Vorgänge können versendet werden.');
+    const e = await einstellungenLesen(k.db);
+    const anhaenge = await Promise.all(
+      d.anhaenge.map(async (art) => {
+        const { pdf, name } = await pdfLesen(k.db, id, art, k.sichtbar);
+        return { name: `${name}.pdf`, mime: 'application/pdf', daten: pdf };
+      }),
+    );
+    const betreff = `${v.art === 'storno' ? 'Stornorechnung' : 'Rechnung'} ${v.nummer} – ${e.firmenname}`;
+    const text = d.text.trim() || `Guten Tag,
+
+anbei erhalten Sie ${anhaenge.length > 1 ? 'die Unterlagen' : 'das Dokument'} zu ${v.art === 'storno' ? 'Storno' : 'Rechnung'} ${v.nummer}.
+
+${e.fusstext}
+
+${e.firmenname}`;
+    await emailSenden(k.db, k.mandant.id, { an: [d.an], betreff, text, anhaenge, antwortAn: k.filiale?.email || e.email || undefined });
+    await k.db
+      .insertInto('email_versand')
+      .values({ vorgang_id: id, zeit: new Date().toISOString(), an: d.an, betreff, anhaenge: JSON.stringify(d.anhaenge), person: k.person })
+      .execute();
+    await protokollieren(k.db, k.person, 'E-Mail gesendet', v.nummer ?? String(id), { an: d.an, anhaenge: d.anhaenge });
+    return { ok: true };
+  });
+
+  app.get<{ Params: { id: string } }>('/api/vorgaenge/:id/emails', async (req) => {
+    const k = kontext(req, LESE_ROLLEN);
+    const id = idAus(req);
+    await vorgangLesen(k.db, id, k.sichtbar);
+    const zeilen = await k.db.selectFrom('email_versand').selectAll().where('vorgang_id', '=', id).orderBy('id', 'desc').execute();
+    return zeilen.map((z) => ({ id: z.id, zeit: z.zeit, an: z.an, betreff: z.betreff, anhaenge: JSON.parse(z.anhaenge) as string[], person: z.person }));
   });
 
   app.get<{ Params: { id: string; art: string }; Querystring: { zahlung?: string } }>('/api/vorgaenge/:id/pdf/:art', async (req, reply) => {

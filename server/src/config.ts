@@ -20,4 +20,9 @@ export const config = {
   hinterTlsProxy: flag('CR_BEHIND_TLS_PROXY'),
   sitzungStunden: Number(process.env.CR_SESSION_HOURS ?? 12),
   produktName: process.env.CR_PRODUCT_NAME ?? 'Cash & Raus',
+  /** Schlüssel für Geheimnisse in der Datenbank (Graph-Client-Secret); ohne ihn lassen sie sich nicht speichern. */
+  secretKey: process.env.CR_SECRET_KEY ?? '',
+  /** Externe Dienste für Dispo (Stufe 6); leer = aus */
+  geocodeUrl: (process.env.CR_GEOCODE_URL ?? 'https://nominatim.openstreetmap.org').replace(/\/+$/, ''),
+  routingUrl: (process.env.CR_ROUTING_URL ?? 'https://router.project-osrm.org').replace(/\/+$/, ''),
 };

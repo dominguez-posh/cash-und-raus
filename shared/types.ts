@@ -48,6 +48,17 @@ export interface LokalesKonto {
   letzteAnmeldung: string | null;
 }
 
+/** E-Mail-Versand über Microsoft Graph (Mail.Send als Anwendung, Absender-Postfach im Tenant des Mandanten) */
+export interface GraphKonfig {
+  tenantId: string;
+  clientId: string;
+  /** wird nie zurückgegeben; true = hinterlegt */
+  clientSecretVorhanden: boolean;
+  absender: string;
+  aktiv: boolean;
+  letzterTest: string | null;
+}
+
 export interface Einstellungen {
   firmenname: string;
   strasse: string;

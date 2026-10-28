@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { Benutzer, Einstellungen, Filiale, ProtokollEintrag, Rolle } from '../../shared/types.ts';
+import type { Benutzer, Einstellungen, Filiale, GraphKonfig, ProtokollEintrag, Rolle } from '../../shared/types.ts';
 import { ROLLEN, ROLLEN_NAMEN } from '../../shared/types.ts';
 import { api } from '../api.ts';
 import { datumZeit, Dialog, Feld, Meldung, useAktion, useLaden } from '../ui.tsx';
 
-type Reiter = 'firma' | 'filialen' | 'benutzer' | 'protokoll';
+type Reiter = 'firma' | 'filialen' | 'benutzer' | 'email' | 'protokoll';
 
 export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
   const [reiter, setReiter] = useState<Reiter>('firma');
@@ -12,6 +12,7 @@ export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
     ['firma', 'Firma & Logo'],
     ['filialen', 'Filialen'],
     ['benutzer', 'Benutzer'],
+    ['email', 'E-Mail'],
     ['protokoll', 'Protokoll'],
   ];
   return (
@@ -27,8 +28,80 @@ export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
       {reiter === 'firma' && <Firma neuLaden={neuLaden} />}
       {reiter === 'filialen' && <Filialen neuLaden={neuLaden} />}
       {reiter === 'benutzer' && <BenutzerListe />}
+      {reiter === 'email' && <EmailEinstellungen />}
       {reiter === 'protokoll' && <Protokoll pfad="/api/admin/protokoll" />}
     </>
+  );
+}
+
+// ---------- E-Mail (Microsoft Graph) ----------
+
+function EmailEinstellungen() {
+  const { daten, fehler, neu } = useLaden(() => api.get<GraphKonfig | null>('/api/admin/email'));
+  const [k, setK] = useState<GraphKonfig | null>(null);
+  const [secret, setSecret] = useState('');
+  const [testAn, setTestAn] = useState('');
+  const a = useAktion();
+  if (fehler) return <Meldung>{fehler}</Meldung>;
+  const w: GraphKonfig = k ?? daten ?? { tenantId: '', clientId: '', clientSecretVorhanden: false, absender: '', aktiv: false, letzterTest: null };
+  const feld = (key: 'tenantId' | 'clientId' | 'absender', titel: string, hinweis?: string) => (
+    <Feld titel={titel}>
+      <input value={w[key]} onChange={(ev) => setK({ ...w, [key]: ev.target.value })} className={key === 'absender' ? '' : 'mono'} />
+      {hinweis && <span className="leise">{hinweis}</span>}
+    </Feld>
+  );
+  const speichern = () =>
+    a.ausfuehren(async () => {
+      await api.put('/api/admin/email', { tenantId: w.tenantId, clientId: w.clientId, clientSecret: secret || null, absender: w.absender, aktiv: w.aktiv });
+      setSecret('');
+      setK(null);
+      neu();
+    }, 'Gespeichert.');
+  return (
+    <div className="karte">
+      <h2>E-Mail-Versand über Microsoft 365</h2>
+      <p className="leise">
+        Rechnungen und Lieferscheine werden über Microsoft Graph aus einem Postfach Ihres Microsoft-365-Tenants gesendet. Dafür braucht es
+        eine App-Registrierung in Entra ID mit der Anwendungsberechtigung <code>Mail.Send</code> (mit Admin-Zustimmung) und ein Client-Secret.
+        Empfehlung: in Exchange Online eine „Application Access Policy“ anlegen, damit die App nur dieses Postfach nutzen darf.
+      </p>
+      <div className="raster">
+        {feld('tenantId', 'Tenant-ID (Verzeichnis-ID)')}
+        {feld('clientId', 'Client-ID (Anwendungs-ID)')}
+        <Feld titel={w.clientSecretVorhanden ? 'Client-Secret (leer lassen = unverändert)' : 'Client-Secret'}>
+          <input type="password" value={secret} onChange={(ev) => setSecret(ev.target.value)} autoComplete="new-password" />
+        </Feld>
+        {feld('absender', 'Absender-Postfach', 'z. B. rechnung@ihre-firma.de (Postfach oder freigegebenes Postfach)')}
+        <label className="haken breit">
+          <input type="checkbox" checked={w.aktiv} onChange={(ev) => setK({ ...w, aktiv: ev.target.checked })} /> Versand aktiv
+        </label>
+      </div>
+      <Meldung>{a.fehler}</Meldung>
+      <Meldung art="ok">{a.ok}</Meldung>
+      <div className="knopfreihe">
+        <button className="primaer" onClick={speichern} disabled={a.laeuft}>Speichern</button>
+      </div>
+      {daten?.aktiv && (
+        <>
+          <h3 style={{ marginTop: 20 }}>Testnachricht</h3>
+          <p className="leise">Letzter erfolgreicher Test: {datumZeit(daten.letzterTest)}</p>
+          <div className="knopfreihe" style={{ marginTop: 0 }}>
+            <input type="email" placeholder="Empfänger" value={testAn} onChange={(ev) => setTestAn(ev.target.value)} style={{ maxWidth: 320 }} />
+            <button
+              onClick={() =>
+                a.ausfuehren(async () => {
+                  await api.post('/api/admin/email/test', { an: testAn });
+                  neu();
+                }, 'Testnachricht gesendet.')
+              }
+              disabled={a.laeuft || !testAn}
+            >
+              Senden
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

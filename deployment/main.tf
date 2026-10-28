@@ -87,6 +87,12 @@ resource "azurerm_container_app" "this" {
   revision_mode                = "Single"
   tags                         = local.tags
 
+  # Schlüssel, mit dem die App Geheimnisse in der Datenbank verschlüsselt (z. B. Graph-Client-Secrets der Mandanten)
+  secret {
+    name  = "cr-secret-key"
+    value = random_password.secret_key.result
+  }
+
   template {
     min_replicas = var.min_replicas
     max_replicas = 1
@@ -116,6 +122,10 @@ resource "azurerm_container_app" "this" {
       env {
         name  = "CR_SESSION_HOURS"
         value = tostring(var.session_hours)
+      }
+      env {
+        name        = "CR_SECRET_KEY"
+        secret_name = "cr-secret-key"
       }
 
       liveness_probe {
@@ -151,4 +161,9 @@ resource "azurerm_container_app" "this" {
   }
 
   depends_on = [terraform_data.image_tag_check]
+}
+
+resource "random_password" "secret_key" {
+  length  = 48
+  special = false
 }

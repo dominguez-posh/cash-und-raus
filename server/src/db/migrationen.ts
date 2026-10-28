@@ -187,6 +187,28 @@ export const mandantMigrationen: string[] = [
   CREATE TRIGGER dokument_kein_delete BEFORE DELETE ON dokument
     BEGIN SELECT RAISE(ABORT, 'Dokumente sind unveränderlich'); END;
   `,
+  // Stufe 2b: E-Mail-Versand über Microsoft Graph (App-Registrierung im Entra-Tenant des Mandanten)
+  `
+  CREATE TABLE graph_konfig (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    tenant_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    client_secret_enc TEXT NOT NULL,
+    absender TEXT NOT NULL,
+    aktiv INTEGER NOT NULL DEFAULT 0,
+    letzter_test TEXT
+  );
+  CREATE TABLE email_versand (
+    id INTEGER PRIMARY KEY,
+    vorgang_id INTEGER NOT NULL REFERENCES vorgang(id),
+    zeit TEXT NOT NULL,
+    an TEXT NOT NULL,
+    betreff TEXT NOT NULL,
+    anhaenge TEXT NOT NULL,
+    person TEXT NOT NULL
+  );
+  CREATE INDEX email_versand_vorgang ON email_versand(vorgang_id);
+  `,
 ];
 
 export function migrieren(db: Database.Database, migrationen: string[]): void {
