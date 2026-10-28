@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import type { Ich, LokalesKonto, Mandant, SamlKonfig } from '../../shared/types.ts';
 import { api } from '../api.ts';
-import { datumZeit, Dialog, Feld, Meldung, useAktion, useLaden } from '../ui.tsx';
+import { datumZeit, Dialog, Feld, hashParameter, Meldung, useAktion, useLaden } from '../ui.tsx';
 import { Protokoll } from './Admin.tsx';
 
-type Reiter = 'mandanten' | 'konten' | 'protokoll';
+type Reiter = 'mandanten' | 'konten' | 'entra' | 'protokoll';
 
 export function Plattform({ ich, neuLaden }: { ich: Ich; neuLaden: () => Promise<void> }) {
   const [reiter, setReiter] = useState<Reiter>('mandanten');
   const titel: [Reiter, string][] = [
     ['mandanten', 'Mandanten'],
     ['konten', 'Lokale Konten'],
+    ['entra', 'Entra-Setup-App'],
     ['protokoll', 'Protokoll'],
   ];
   return (
@@ -25,7 +26,85 @@ export function Plattform({ ich, neuLaden }: { ich: Ich; neuLaden: () => Promise
       </div>
       {reiter === 'mandanten' && <Mandanten neuLaden={neuLaden} />}
       {reiter === 'konten' && <Konten ich={ich} />}
+      {reiter === 'entra' && <EntraApp />}
       {reiter === 'protokoll' && <Protokoll pfad="/api/plattform/protokoll" />}
+    </>
+  );
+}
+
+// ---------- Entra-Setup-App (für die automatische SAML-Einrichtung) ----------
+
+interface EntraAppDaten {
+  clientId: string;
+  clientSecretVorhanden: boolean;
+  redirectUri: string;
+}
+
+function EntraApp() {
+  const { daten, fehler, neu } = useLaden(() => api.get<EntraAppDaten>('/api/plattform/entra'));
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [secret, setSecret] = useState('');
+  const a = useAktion();
+  if (fehler) return <Meldung>{fehler}</Meldung>;
+  if (!daten) return null;
+  const id = clientId ?? daten.clientId;
+  return (
+    <div className="karte">
+      <h2>Entra-Setup-App</h2>
+      <p className="leise">
+        Mit dieser App-Registrierung richtet die Plattform die Firmenanmeldung in den Entra-Tenants der Mandanten automatisch ein
+        („Mit Microsoft verbinden“). Einmalig im eigenen Tenant anlegen: Entra ID → App-Registrierungen → Neue Registrierung,
+        Kontotyp <strong>„Konten in einem beliebigen Organisationsverzeichnis“</strong> (mandantenfähig), Umleitungs-URI (Web) wie unten.
+        Unter API-Berechtigungen (Microsoft Graph, <strong>delegiert</strong>): <code>Application.ReadWrite.All</code> und <code>Domain.Read.All</code>.
+        Die Zustimmung erteilt der Admin des jeweiligen Mandanten beim Verbinden.
+      </p>
+      <div className="raster">
+        <Feld titel="Umleitungs-URI (in der App-Registrierung eintragen)"><input readOnly value={daten.redirectUri} className="mono" onFocus={(e) => e.target.select()} /></Feld>
+        <Feld titel="Anwendungs-ID (Client-ID)"><input value={id} onChange={(e) => setClientId(e.target.value)} className="mono" /></Feld>
+        <Feld titel={daten.clientSecretVorhanden ? 'Client-Secret (leer lassen = unverändert)' : 'Client-Secret'}>
+          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" />
+        </Feld>
+      </div>
+      <Meldung>{a.fehler}</Meldung>
+      <Meldung art="ok">{a.ok}</Meldung>
+      <div className="knopfreihe">
+        <button
+          className="primaer"
+          disabled={a.laeuft}
+          onClick={() =>
+            a.ausfuehren(async () => {
+              await api.put('/api/plattform/entra', { clientId: id, clientSecret: secret || null });
+              setSecret('');
+              setClientId(null);
+              neu();
+            }, 'Gespeichert.')
+          }
+        >
+          Speichern
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Startet die automatische Einrichtung: Weiterleitung zur Microsoft-Anmeldung */
+export function EntraVerbinden({ mandantId, zurueck }: { mandantId: string; zurueck: 'plattform' | 'admin' }) {
+  const a = useAktion();
+  return (
+    <>
+      <button
+        className="primaer"
+        disabled={a.laeuft}
+        onClick={() =>
+          a.ausfuehren(async () => {
+            const { url } = await api.post<{ url: string }>('/api/entra/start', { mandant: mandantId, zurueck });
+            location.href = url;
+          })
+        }
+      >
+        Mit Microsoft verbinden (automatisch einrichten)
+      </button>
+      <Meldung>{a.fehler}</Meldung>
     </>
   );
 }
@@ -36,8 +115,15 @@ function Mandanten({ neuLaden }: { neuLaden: () => Promise<void> }) {
   const { daten, fehler, neu } = useLaden(() => api.get<Mandant[]>('/api/plattform/mandanten'));
   const [neuer, setNeuer] = useState(false);
   const [offen, setOffen] = useState<Mandant | null>(null);
+  const [entra] = useState(() => hashParameter());
   const a = useAktion();
   if (fehler) return <Meldung>{fehler}</Meldung>;
+  const entraMeldung = entra.get('entra') && (
+    <Meldung art={entra.get('entra') === 'ok' ? 'ok' : 'fehler'}>
+      {entra.get('entra') === 'ok' ? 'Firmenanmeldung eingerichtet. ' : 'Einrichtung fehlgeschlagen: '}
+      {entra.get('meldung')}
+    </Meldung>
+  );
 
   const betreten = (id: string) =>
     a.ausfuehren(async () => {
@@ -52,6 +138,7 @@ function Mandanten({ neuLaden }: { neuLaden: () => Promise<void> }) {
         <h2 style={{ margin: 0 }}>Mandanten</h2>
         <button className="primaer" onClick={() => setNeuer(true)}>Neuer Mandant</button>
       </div>
+      {entraMeldung}
       <Meldung>{a.fehler}</Meldung>
       <div className="tabelle-huelle">
         <table>
@@ -172,7 +259,13 @@ function MandantDialog({ mandant, schliessen, gespeichert }: { mandant: Mandant;
       </div>
 
       <h3 style={{ marginTop: 20 }}>Firmenanmeldung (SAML2)</h3>
-      <p className="leise">In Entra: Unternehmensanwendungen → Neue Anwendung → Eigene Anwendung erstellen → Einmaliges Anmelden → SAML. Dort eintragen:</p>
+      <p className="leise">
+        Am einfachsten automatisch: Ein Entra-Admin des Mandanten meldet sich an, die Unternehmensanwendung wird angelegt und die Anmeldung aktiviert.
+      </p>
+      <EntraVerbinden mandantId={mandant.id} zurueck="plattform" />
+      <p className="leise" style={{ marginTop: 16 }}>
+        Oder manuell in Entra: Unternehmensanwendungen → Neue Anwendung → Eigene Anwendung erstellen → Einmaliges Anmelden → SAML. Dort eintragen:
+      </p>
       <div className="raster">
         <Feld titel="Bezeichner (Entity ID)"><input readOnly value={mandant.sp.entityId} className="mono" onFocus={(e) => e.target.select()} /></Feld>
         <Feld titel="Antwort-URL (ACS)"><input readOnly value={mandant.sp.acsUrl} className="mono" onFocus={(e) => e.target.select()} /></Feld>

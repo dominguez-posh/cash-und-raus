@@ -212,33 +212,40 @@ export function samlRouten(app: FastifyInstance): void {
         aktiv: z.boolean(),
       })
       .parse(req.body);
-    const zertifikate = d.idpZertifikate.map(zertifikatNormalisieren).filter(Boolean);
-    for (const c of zertifikate) {
-      try {
-        new X509Certificate(Buffer.from(c, 'base64'));
-      } catch {
-        throw new HttpFehler(400, 'Ein Zertifikat ist ungültig.');
-      }
-    }
-    // Eine Domäne darf nur zu einem Mandanten gehören.
-    const andere = await plattformDb().selectFrom('mandant_saml').select(['mandant_id', 'email_domaenen']).where('mandant_id', '!=', id).execute();
-    for (const a of andere) {
-      const doppelt = (JSON.parse(a.email_domaenen) as string[]).find((x) => d.emailDomaenen.includes(x.toLowerCase()));
-      if (doppelt) throw new HttpFehler(409, `Domäne ${doppelt} ist bereits Mandant ${a.mandant_id} zugeordnet.`);
-    }
-    const werte = {
-      idp_entity_id: d.idpEntityId,
-      idp_sso_url: d.idpSsoUrl,
-      idp_zertifikate: JSON.stringify(zertifikate),
-      email_domaenen: JSON.stringify([...new Set(d.emailDomaenen)]),
-      aktiv: d.aktiv ? 1 : 0,
-    };
-    await plattformDb()
-      .insertInto('mandant_saml')
-      .values({ mandant_id: id, ...werte })
-      .onConflict((oc) => oc.column('mandant_id').doUpdateSet(werte))
-      .execute();
-    await plattformProtokollieren(k.sitzung.email, 'SAML-Konfiguration gespeichert', id, { idpEntityId: d.idpEntityId, domaenen: d.emailDomaenen, aktiv: d.aktiv });
+    await samlKonfigSpeichern(id, d, k.sitzung.email);
     return { ok: true };
   });
+}
+
+/** Prüft Zertifikate und Domänen-Eindeutigkeit und speichert die SAML-Anbindung eines Mandanten. */
+export async function samlKonfigSpeichern(id: string, d: SamlKonfig, person: string): Promise<void> {
+  const zertifikate = d.idpZertifikate.map(zertifikatNormalisieren).filter(Boolean);
+  if (!zertifikate.length) throw new HttpFehler(400, 'Mindestens ein Zertifikat');
+  for (const c of zertifikate) {
+    try {
+      new X509Certificate(Buffer.from(c, 'base64'));
+    } catch {
+      throw new HttpFehler(400, 'Ein Zertifikat ist ungültig.');
+    }
+  }
+  const domaenen = [...new Set(d.emailDomaenen.map((x) => x.trim().toLowerCase()).filter(Boolean))];
+  // Eine Domäne darf nur zu einem Mandanten gehören.
+  const andere = await plattformDb().selectFrom('mandant_saml').select(['mandant_id', 'email_domaenen']).where('mandant_id', '!=', id).execute();
+  for (const a of andere) {
+    const doppelt = (JSON.parse(a.email_domaenen) as string[]).find((x) => domaenen.includes(x.toLowerCase()));
+    if (doppelt) throw new HttpFehler(409, `Domäne ${doppelt} ist bereits Mandant ${a.mandant_id} zugeordnet.`);
+  }
+  const werte = {
+    idp_entity_id: d.idpEntityId,
+    idp_sso_url: d.idpSsoUrl,
+    idp_zertifikate: JSON.stringify(zertifikate),
+    email_domaenen: JSON.stringify(domaenen),
+    aktiv: d.aktiv ? 1 : 0,
+  };
+  await plattformDb()
+    .insertInto('mandant_saml')
+    .values({ mandant_id: id, ...werte })
+    .onConflict((oc) => oc.column('mandant_id').doUpdateSet(werte))
+    .execute();
+  await plattformProtokollieren(person, 'SAML-Konfiguration gespeichert', id, { idpEntityId: d.idpEntityId, domaenen, aktiv: d.aktiv });
 }

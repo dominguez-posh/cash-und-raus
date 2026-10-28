@@ -63,6 +63,13 @@ export const plattformMigrationen: string[] = [
   CREATE TRIGGER plattform_protokoll_kein_delete BEFORE DELETE ON plattform_protokoll
     BEGIN SELECT RAISE(ABORT, 'Protokoll ist unveränderlich'); END;
   `,
+  // Plattform-Einstellungen (z. B. Entra-Setup-App für die automatische SAML-Einrichtung)
+  `
+  CREATE TABLE plattform_einstellungen (
+    schluessel TEXT PRIMARY KEY,
+    wert TEXT NOT NULL
+  );
+  `,
 ];
 
 export const mandantMigrationen: string[] = [

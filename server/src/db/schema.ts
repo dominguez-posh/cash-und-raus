@@ -52,6 +52,10 @@ export interface PlattformDB {
     objekt: string;
     details: string;
   };
+  plattform_einstellungen: {
+    schluessel: string;
+    wert: string;
+  };
 }
 
 // Mandanten-DB: eine Datei je Mandant.

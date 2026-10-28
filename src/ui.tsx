@@ -21,9 +21,10 @@ export function useLaden<T>(laden: () => Promise<T>, abh: unknown[] = []) {
  * (z. B. „Neuer Verkauf“, während ein neuer Entwurf offen ist).
  */
 export function useRoute(): { route: string; besuch: number } {
-  const [stand, setStand] = useState(() => ({ route: location.hash.slice(1) || '/', besuch: 0 }));
+  const pfad = () => location.hash.slice(1).split('?')[0] || '/';
+  const [stand, setStand] = useState(() => ({ route: pfad(), besuch: 0 }));
   useEffect(() => {
-    const f = () => setStand((s) => ({ route: location.hash.slice(1) || '/', besuch: s.besuch + 1 }));
+    const f = () => setStand((s) => ({ route: pfad(), besuch: s.besuch + 1 }));
     window.addEventListener('hashchange', f);
     return () => window.removeEventListener('hashchange', f);
   }, []);
@@ -100,4 +101,11 @@ export function speicherSchreiben(schluessel: string, wert: string): void {
   } catch {
     /* privates Fenster: ohne Merken weiter */
   }
+}
+
+/** Abfrageparameter hinter der Route (#/admin?entra=ok) lesen und entfernen */
+export function hashParameter(): URLSearchParams {
+  const [pfad, abfrage] = location.hash.split('?');
+  if (abfrage) history.replaceState(null, '', pfad);
+  return new URLSearchParams(abfrage ?? '');
 }

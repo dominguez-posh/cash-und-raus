@@ -82,7 +82,7 @@ export function App() {
   else if (route === '/suche' && ich.mandant) seite = <Suche />;
   else if (route === '/kasse' && ich.mandant && darfKasse(ich)) seite = <Kasse ich={ich} />;
   else if (route === '/plattform' && ich.plattformAdmin) seite = <Plattform ich={ich} neuLaden={laden} />;
-  else if (route === '/admin' && ich.mandant && istAdmin) seite = <Admin neuLaden={laden} />;
+  else if (route === '/admin' && ich.mandant && istAdmin) seite = <Admin neuLaden={laden} mandantId={ich.mandant.id} />;
   else if (ich.mandant) seite = <Start ich={ich} />;
   else if (ich.plattformAdmin) seite = <Plattform ich={ich} neuLaden={laden} />;
   else seite = <Meldung>Kein Mandant zugeordnet.</Meldung>;

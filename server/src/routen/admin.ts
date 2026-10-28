@@ -2,6 +2,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ROLLEN } from '../../../shared/types.ts';
+import { entraAppLesen } from '../auth/entra.ts';
+import { samlKonfigLesen, spDaten } from '../auth/saml.ts';
 import { emailSenden, graphKonfigLesen, graphKonfigSpeichern } from '../email.ts';
 import { altrechnungImportieren, altrechnungLesen } from '../import.ts';
 import { bereichPruefen, clientIp } from '../ip.ts';
@@ -165,6 +167,19 @@ export function adminRouten(app: FastifyInstance): void {
   });
 
   app.get('/api/admin/protokoll', async (req) => protokollListe(mitRolle(req, 'admin').db));
+
+  // ---------- Firmenanmeldung (Stand für den Mandanten-Admin) ----------
+
+  app.get('/api/admin/anmeldung', async (req) => {
+    const k = mitRolle(req, 'admin');
+    const saml = await samlKonfigLesen(k.mandant.id);
+    const entra = await entraAppLesen();
+    return {
+      saml: saml && { aktiv: saml.aktiv, emailDomaenen: saml.emailDomaenen, idpEntityId: saml.idpEntityId, zertifikate: saml.idpZertifikate.length },
+      sp: spDaten(k.mandant.id),
+      entraBereit: Boolean(entra.clientId && entra.clientSecretVorhanden),
+    };
+  });
 
   // ---------- Import Altsystem ----------
 

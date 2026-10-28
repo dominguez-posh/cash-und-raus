@@ -24,7 +24,7 @@ USt 7 %. Entfernungsaufschlag (ab 13 km 1,40 €/km) war geplant, ist im Code de
 
 | Thema | Entscheidung |
 | --- | --- |
-| Anmeldung Mitarbeiter | SAML2 je Mandant (Entra-Unternehmensanwendung); Zuordnung über E-Mail-Domäne, Bindung an Entra-Objekt-ID |
+| Anmeldung Mitarbeiter | SAML2 je Mandant (Entra-Unternehmensanwendung); Zuordnung über E-Mail-Domäne, Bindung an Entra-Objekt-ID. Einrichtung per Klick: Admin des Mandanten meldet sich bei Microsoft an, die Plattform legt die Unternehmensanwendung über Graph an |
 | Anmeldung Admin/Notfall | Lokales Konto: Passwort + Pflicht-MFA (TOTP oder Passkey), Wiederherstellungscodes; erstes Konto über die Ersteinrichtung beim ersten Öffnen |
 | Filiale | Automatisch über IP-Bereich der Filiale, sonst Auswahl aus den erlaubten Filialen |
 | Mandanten | Code mandantenfähig; Betrieb als eine Instanz für alle **oder** eine Instanz je Kunde |

@@ -27,6 +27,9 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 ## Anmeldung
 
 - Mitarbeiter: SAML2 je Mandant (`/saml/<kennung>/login|acs|metadata`), Konfiguration in der Plattform-DB.
+  Automatische Einrichtung in Entra („Mit Microsoft verbinden“, `server/src/auth/entra.ts`): braucht die
+  mandantenfähige Setup-App der Plattform (Plattform → Entra-Setup-App; delegiert Application.ReadWrite.All,
+  Domain.Read.All) und `CR_SECRET_KEY`; der Admin des Mandanten meldet sich an und stimmt zu.
 - Admin/Notfall: lokales Konto (Plattform-Admin), Passwort + TOTP oder Passkey Pflicht. Das erste Konto legt die
   Ersteinrichtung beim ersten Öffnen an (`/api/auth/einrichtung`, nur solange kein lokales Konto existiert).
 - Plattform-Admins können einen Mandanten „betreuen“ (Admin-Rolle im Mandanten, wird protokolliert).
@@ -48,3 +51,5 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 - 2026-10-28: Stufe 4 Import: `server/src/import.ts` liest die Altdateien (Blätter Daten/Rechnung, Zellen im Kopf
   der Datei dokumentiert), Verwaltung → Import (prüfen, dann importieren). Importierte Vorgänge sind festgeschrieben
   ohne PDF-Archiv (PDF wird live erzeugt), Nummernkreis zieht nach. Gegen die 5 echten Dateien geprüft (lokal).
+- 2026-10-28: Entra-Einrichtung mit einem Klick (Unternehmensanwendung per Graph anlegen: Entity-ID/ACS, SAML-Modus,
+  Signaturzertifikat, Domänen; wiederholbar). Noch nicht gegen ein echtes Entra getestet.

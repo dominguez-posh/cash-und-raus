@@ -5,6 +5,7 @@ import formbody from '@fastify/formbody';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
+import { entraRouten } from './auth/entra.ts';
 import { lokaleRouten } from './auth/lokal.ts';
 import { samlRouten } from './auth/saml.ts';
 import { config } from './config.ts';
@@ -69,6 +70,7 @@ export async function appBauen(opts: { logger?: boolean } = {}): Promise<Fastify
   allgemeineRouten(app);
   lokaleRouten(app);
   samlRouten(app);
+  entraRouten(app);
   adminRouten(app);
   plattformRouten(app);
   verkaufRouten(app);
@@ -78,7 +80,7 @@ export async function appBauen(opts: { logger?: boolean } = {}): Promise<Fastify
     await app.register(fastifyStatic, { root: config.webVerzeichnis, index: false, wildcard: false });
     const index = path.join(config.webVerzeichnis, 'index.html');
     app.setNotFoundHandler((req, reply) => {
-      if (req.method !== 'GET' || req.url.startsWith('/api/') || req.url.startsWith('/saml/')) {
+      if (req.method !== 'GET' || req.url.startsWith('/api/') || req.url.startsWith('/saml/') || req.url.startsWith('/entra/')) {
         return reply.status(404).send({ fehler: 'Nicht gefunden' });
       }
       // Single-Page-App: alle übrigen Pfade liefern index.html

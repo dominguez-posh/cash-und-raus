@@ -2,16 +2,18 @@ import { useState } from 'react';
 import type { Benutzer, Einstellungen, Filiale, GraphKonfig, ProtokollEintrag, Rolle } from '../../shared/types.ts';
 import { ROLLEN, ROLLEN_NAMEN } from '../../shared/types.ts';
 import { api } from '../api.ts';
-import { datumZeit, Dialog, Feld, Meldung, useAktion, useLaden } from '../ui.tsx';
+import { datumZeit, Dialog, Feld, hashParameter, Meldung, useAktion, useLaden } from '../ui.tsx';
+import { EntraVerbinden } from './Plattform.tsx';
 
-type Reiter = 'firma' | 'filialen' | 'benutzer' | 'email' | 'import' | 'protokoll';
+type Reiter = 'firma' | 'filialen' | 'benutzer' | 'anmeldung' | 'email' | 'import' | 'protokoll';
 
-export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
-  const [reiter, setReiter] = useState<Reiter>('firma');
+export function Admin({ neuLaden, mandantId }: { neuLaden: () => Promise<void>; mandantId: string }) {
+  const [reiter, setReiter] = useState<Reiter>(() => (location.hash.includes('entra=') ? 'anmeldung' : 'firma'));
   const titel: [Reiter, string][] = [
     ['firma', 'Firma & Logo'],
     ['filialen', 'Filialen'],
     ['benutzer', 'Benutzer'],
+    ['anmeldung', 'Anmeldung'],
     ['email', 'E-Mail'],
     ['import', 'Import'],
     ['protokoll', 'Protokoll'],
@@ -29,6 +31,7 @@ export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
       {reiter === 'firma' && <Firma neuLaden={neuLaden} />}
       {reiter === 'filialen' && <Filialen neuLaden={neuLaden} />}
       {reiter === 'benutzer' && <BenutzerListe />}
+      {reiter === 'anmeldung' && <Anmeldung mandantId={mandantId} />}
       {reiter === 'email' && <EmailEinstellungen />}
       {reiter === 'import' && <Import />}
       {reiter === 'protokoll' && <Protokoll pfad="/api/admin/protokoll" />}
@@ -117,6 +120,54 @@ function Import() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------- Firmenanmeldung ----------
+
+interface AnmeldungStand {
+  saml: { aktiv: boolean; emailDomaenen: string[]; idpEntityId: string; zertifikate: number } | null;
+  sp: { entityId: string; acsUrl: string; metadatenUrl: string };
+  entraBereit: boolean;
+}
+
+function Anmeldung({ mandantId }: { mandantId: string }) {
+  const { daten, fehler } = useLaden(() => api.get<AnmeldungStand>('/api/admin/anmeldung'));
+  const [p] = useState(() => hashParameter());
+  if (fehler) return <Meldung>{fehler}</Meldung>;
+  if (!daten) return null;
+  return (
+    <div className="karte">
+      <h2>Anmeldung mit dem Firmenkonto (Microsoft 365)</h2>
+      {p.get('entra') && (
+        <Meldung art={p.get('entra') === 'ok' ? 'ok' : 'fehler'}>
+          {p.get('entra') === 'ok' ? 'Firmenanmeldung eingerichtet. ' : 'Einrichtung fehlgeschlagen: '}
+          {p.get('meldung')}
+        </Meldung>
+      )}
+      <p>
+        Stand:{' '}
+        {daten.saml?.aktiv ? (
+          <span className="marker gruen">aktiv</span>
+        ) : daten.saml ? (
+          <span className="marker">eingerichtet, nicht aktiv</span>
+        ) : (
+          <span className="marker rot">nicht eingerichtet</span>
+        )}
+        {daten.saml?.emailDomaenen.map((d) => <span key={d} className="marker">{d}</span>)}
+      </p>
+      <p className="leise">
+        Mit einem Klick: Sie melden sich als Administrator Ihres Microsoft-365-Tenants an und stimmen zu. Danach legt die Anwendung die
+        Unternehmensanwendung mit SAML-Anmeldung in Ihrem Tenant an, erstellt das Signaturzertifikat und schaltet die Anmeldung frei.
+        Benutzer müssen zusätzlich unter „Benutzer“ angelegt sein.
+      </p>
+      {daten.entraBereit ? (
+        <EntraVerbinden mandantId={mandantId} zurueck="admin" />
+      ) : (
+        <Meldung art="hinweis">Die automatische Einrichtung ist auf der Plattform noch nicht freigeschaltet; bitte die Plattform-Administration ansprechen.</Meldung>
+      )}
+      <p className="leise" style={{ marginTop: 16 }}>Für eine manuelle Einrichtung: Bezeichner (Entity ID) <code>{daten.sp.entityId}</code>, Antwort-URL <code>{daten.sp.acsUrl}</code>.</p>
     </div>
   );
 }
