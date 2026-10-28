@@ -35,7 +35,7 @@ const idAus = (req: FastifyRequest) => {
 
 export function verkaufRouten(app: FastifyInstance): void {
   app.get('/api/verkauf/vorgaben', async (req): Promise<VerkaufVorgaben> => {
-    const k = kontext(req, VERKAUF_ROLLEN);
+    const k = kontext(req, LESE_ROLLEN);
     const e = await einstellungenLesen(k.db);
     return {
       ustSatz: e.ustSatz,
@@ -43,6 +43,7 @@ export function verkaufRouten(app: FastifyInstance): void {
       rabattarten: e.rabattarten,
       lieferzeiten: e.lieferzeiten,
       hinweise: e.hinweise,
+      belegGruende: e.belegGruende,
       orte: k.filialen.map((f) => `Filiale ${f.name}`),
     };
   });

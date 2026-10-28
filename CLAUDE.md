@@ -42,3 +42,6 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
   Offen: PDF-Layout mit echten Firmendaten prüfen, Bedienung auf dem iPad testen.
 - 2026-10-28: Stufe 2b: E-Mail über Microsoft Graph (`server/src/email.ts`), Client-Secret verschlüsselt mit
   `CR_SECRET_KEY` (`geheim.ts`, Terraform `random_password`). Je Mandant: App-Registrierung mit Mail.Send nötig.
+- 2026-10-28: Stufe 3 Kasse: `shared/kasse.ts`, `server/src/kasse.ts`, `routen/kasse.ts`, `src/seiten/Kasse.tsx`.
+  Wechselgeld je Filiale als Anfangsbestand; Soll = Wechselgeld + Barzahlungen (Verkauf) + Belege; Belege nur per
+  Gegenbeleg korrigierbar; Abschluss je Filiale/Tag unveränderlich, sperrt weitere Belege. Migration 4.

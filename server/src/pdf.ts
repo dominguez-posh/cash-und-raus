@@ -1,5 +1,6 @@
 // PDFs: Rechnung (auch Storno), Lieferschein, Kommission, Quittung. Nur Standardschriften, keine externen Zugriffe.
 import pdfmake from 'pdfmake';
+import { BELEG_ART_NAMEN, type Kassenabschluss, type Kassenbeleg, type Kassentag, MUENZEN, SCHEINE } from '../../shared/kasse.ts';
 import type { Einstellungen, Filiale } from '../../shared/types.ts';
 import {
   anschriftZeilen,
@@ -41,7 +42,9 @@ function logoInhalt(logo: DruckDaten['logo']): Inhalt | null {
   return null; // WebP kann pdfkit nicht einbetten
 }
 
-function kopf(d: DruckDaten, titel: string, infos: [string, string][], empfaenger: string[]): Inhalt[] {
+type Briefkopf = Pick<DruckDaten, 'einstellungen' | 'filiale' | 'logo'>;
+
+function kopf(d: Briefkopf, titel: string, infos: [string, string][], empfaenger: string[]): Inhalt[] {
   const e = d.einstellungen;
   const f = d.filiale;
   const absender = [e.firmenname, f.strasse || e.strasse, `${f.plz || e.plz} ${f.ort || e.ort}`.trim()].filter(Boolean).join(' · ');
@@ -285,17 +288,143 @@ function quittung(d: DruckDaten): Inhalt[] {
   ];
 }
 
-export async function pdfErstellen(art: PdfArt, d: DruckDaten): Promise<Buffer> {
-  const inhalt = { rechnung, lieferschein, kommission, quittung }[art](d);
-  const entwurf = d.vorgang.status === 'entwurf';
+function rendern(inhalt: Inhalt[], e: Einstellungen, titel: string, wasserzeichen?: string): Promise<Buffer> {
   const doc = pdfmake.createPdf({
     pageSize: 'A4',
     pageMargins: [50, 40, 50, 60],
-    info: { title: `${art} ${d.vorgang.nummer ?? 'Entwurf'}`, author: d.einstellungen.firmenname, producer: 'Cash & Raus' },
-    watermark: entwurf ? { text: 'ENTWURF', opacity: 0.08, bold: true } : undefined,
+    info: { title: titel, author: e.firmenname, producer: 'Cash & Raus' },
+    watermark: wasserzeichen ? { text: wasserzeichen, opacity: 0.08, bold: true } : undefined,
     defaultStyle: { font: 'Helvetica', fontSize: 10, lineHeight: 1.15 },
-    footer: fuss(d.einstellungen),
+    footer: fuss(e),
     content: inhalt,
   });
   return doc.getBuffer();
+}
+
+export async function pdfErstellen(art: PdfArt, d: DruckDaten): Promise<Buffer> {
+  const inhalt = { rechnung, lieferschein, kommission, quittung }[art](d);
+  return rendern(inhalt, d.einstellungen, `${art} ${d.vorgang.nummer ?? 'Entwurf'}`, d.vorgang.status === 'entwurf' ? 'ENTWURF' : undefined);
+}
+
+// ---------- Kasse ----------
+
+const zeitDeutsch = (iso: string) => new Date(iso).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'short', timeStyle: 'short' });
+const fett = (t: string | Record<string, unknown>) => (typeof t === 'string' ? { text: t, bold: true } : { ...t, bold: true });
+
+function beleg(d: Briefkopf & { beleg: Kassenbeleg }): Inhalt[] {
+  const b = d.beleg;
+  return [
+    ...kopf(d, `Kassenbeleg ${BELEG_ART_NAMEN[b.art]}`, [['Beleg Nr.', b.nummer], ['Datum', datumDeutsch(b.datum)], ['Filiale', d.filiale.kuerzel]], []),
+    {
+      table: {
+        widths: [150, '*'],
+        body: [
+          ['Art', BELEG_ART_NAMEN[b.art]],
+          ['Grund', b.grund],
+          ...(b.text ? [['Text', b.text]] : []),
+          [{ text: 'Betrag', bold: true }, { text: euro(b.betragCent), bold: true }],
+          ['Erfasst', `${zeitDeutsch(b.zeit)} von ${b.person}`],
+          ...(b.stornoVon ? [['Gegenbeleg zu', `${d.filiale.kuerzel}-K${b.stornoVon}`]] : []),
+          ...(b.storniertDurch ? [[{ text: 'Storniert durch', color: '#b42318' }, { text: `${d.filiale.kuerzel}-K${b.storniertDurch}`, color: '#b42318' }]] : []),
+        ],
+      },
+      layout: 'noBorders',
+    },
+    { columns: [{ text: '_______________________________\nUnterschrift', fontSize: 9 }, { text: '_______________________________\nGegenzeichnung', fontSize: 9 }], margin: [0, 50, 0, 0] },
+  ];
+}
+
+function abschluss(d: Briefkopf & { abschluss: Kassenabschluss; tag: Kassentag }): Inhalt[] {
+  const a = d.abschluss;
+  const zeile = (k: string, c: number, hervor = false) => [{ text: k, bold: hervor }, { text: euro(c), alignment: 'right', bold: hervor }];
+  const zaehlung = [...SCHEINE, ...MUENZEN]
+    .filter((w) => a.zaehlung[String(w)])
+    .map((w) => [euro(w), { text: String(a.zaehlung[String(w)]), alignment: 'right' }, { text: euro(w * a.zaehlung[String(w)]!), alignment: 'right' }]);
+  const zahlungen = d.tag.zahlungen.filter((z) => z.mittel === 'bar');
+  const belege = d.tag.belege;
+  return [
+    ...kopf(d, 'Kassenabschluss', [['Tag', datumDeutsch(a.datum)], ['Filiale', d.filiale.kuerzel], ['Z-Bon Nr.', a.zBonNr || '–'], ['Abgeschlossen', zeitDeutsch(a.zeit)]], []),
+    {
+      columns: [
+        {
+          width: '*',
+          table: {
+            widths: ['*', 80],
+            body: [
+              zeile('Anfangsbestand (Wechselgeld)', a.anfangCent),
+              zeile('+ Barzahlungen aus dem Verkauf', a.barZahlungenCent),
+              zeile('+ Einnahmen (Belege)', a.einnahmenCent),
+              zeile('− Ausgaben (Belege)', -a.ausgabenCent),
+              zeile('= Soll', a.sollCent, true),
+              zeile('Ist (gezählt)', a.istCent, true),
+              zeile(a.differenzCent >= 0 ? 'Differenz (Überschuss)' : 'Differenz (Fehlbetrag)', a.differenzCent, true),
+              zeile('Entnahme (zur Bank)', a.entnahmeCent),
+              zeile('verbleibt als Wechselgeld', a.istCent - a.entnahmeCent),
+              ...(a.zBarCent !== null ? [zeile('Z-Bon Barumsatz', a.zBarCent), zeile('Abweichung zu Barzahlungen', a.zBarCent - a.barZahlungenCent)] : []),
+              zeile('EC-Zahlungen (nachrichtlich)', a.ecCent),
+            ],
+          },
+          layout: LINIE,
+          fontSize: 9.5,
+        },
+        {
+          width: 190,
+          table: { widths: ['*', 40, 60], body: [[fett('Zählprotokoll'), fett({ text: 'Anzahl', alignment: 'right' }), fett({ text: 'Wert', alignment: 'right' })], ...zaehlung] },
+          layout: LINIE,
+          fontSize: 9,
+        },
+      ],
+      columnGap: 16,
+    },
+    zahlungen.length
+      ? {
+          margin: [0, 14, 0, 0],
+          table: {
+            headerRows: 1,
+            widths: [60, 70, '*', 70, 70],
+            body: [
+              ['Zeit', 'Rechnung', 'Kunde', 'Zweck', { text: 'Betrag', alignment: 'right' }].map(fett),
+              ...zahlungen.map((z) => [zeitDeutsch(z.zeit).split(', ')[1] ?? '', z.nummer, z.kunde, z.zweck, { text: euro(z.betragCent), alignment: 'right' }]),
+            ],
+          },
+          layout: LINIE,
+          fontSize: 8.5,
+        }
+      : '',
+    belege.length
+      ? {
+          margin: [0, 14, 0, 0],
+          table: {
+            headerRows: 1,
+            widths: [60, 60, '*', 70],
+            body: [
+              ['Beleg', 'Art', 'Grund', { text: 'Betrag', alignment: 'right' }].map(fett),
+              ...belege.map((b) => [
+                b.nummer,
+                BELEG_ART_NAMEN[b.art],
+                `${b.grund}${b.text ? ` – ${b.text}` : ''}${b.storniertDurch ? ' (storniert)' : ''}`,
+                { text: euro(b.art === 'ausgabe' ? -b.betragCent : b.betragCent), alignment: 'right' },
+              ]),
+            ],
+          },
+          layout: LINIE,
+          fontSize: 8.5,
+        }
+      : '',
+    a.bemerkung ? { text: a.bemerkung, margin: [0, 10, 0, 0] } : '',
+    {
+      columns: [
+        { text: `_______________________________\nübergeben: ${a.uebergebenVon}`, fontSize: 9 },
+        { text: `_______________________________\nübernommen: ${a.uebernommenVon}`, fontSize: 9 },
+      ],
+      margin: [0, 40, 0, 0],
+    },
+  ];
+}
+
+export async function kassePdf(art: 'beleg', d: Briefkopf & { beleg: Kassenbeleg }): Promise<Buffer>;
+export async function kassePdf(art: 'abschluss', d: Briefkopf & { abschluss: Kassenabschluss; tag: Kassentag }): Promise<Buffer>;
+export async function kassePdf(art: 'beleg' | 'abschluss', d: Briefkopf & Partial<{ beleg: Kassenbeleg; abschluss: Kassenabschluss; tag: Kassentag }>): Promise<Buffer> {
+  if (art === 'beleg') return rendern(beleg(d as Briefkopf & { beleg: Kassenbeleg }), d.einstellungen, `Beleg ${d.beleg!.nummer}`);
+  return rendern(abschluss(d as Briefkopf & { abschluss: Kassenabschluss; tag: Kassentag }), d.einstellungen, `Kassenabschluss ${d.abschluss!.datum}`);
 }

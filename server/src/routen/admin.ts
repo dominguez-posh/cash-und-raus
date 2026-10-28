@@ -41,6 +41,7 @@ const EinstellungenDaten = z.object({
     .max(20),
   lieferzeiten: z.array(text(40).min(1)).max(20),
   hinweise: z.array(z.object({ zeichen: z.string().trim().regex(/^\*{1,3}$/, 'Kennzeichen: *, ** oder ***'), text: text(500).min(1) })).max(3),
+  belegGruende: z.array(text(60).min(1)).max(50),
 }).refine((e) => e.ustSaetze.includes(e.ustSatz), { message: 'Der Standardsatz muss unter den wählbaren USt-Sätzen sein', path: ['ustSatz'] });
 
 const FilialDaten = z.object({
@@ -54,6 +55,7 @@ const FilialDaten = z.object({
   email: text(),
   ipBereiche: z.array(z.string().trim()).max(50),
   aktiv: z.boolean(),
+  wechselgeldCent: z.number().int().min(0).max(1_000_000).default(0),
 });
 
 const BenutzerDaten = z.object({

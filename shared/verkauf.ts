@@ -7,7 +7,7 @@ export const LESE_ROLLEN: Rolle[] = [...VERKAUF_ROLLEN, 'dispo', 'lager'];
 export const STORNO_ROLLEN: Rolle[] = ['admin', 'filialleitung'];
 
 /** Was die Verkaufsmaske aus den Einstellungen braucht (auch ohne Admin-Rolle) */
-export type VerkaufVorgaben = Pick<Einstellungen, 'ustSatz' | 'ustSaetze' | 'rabattarten' | 'lieferzeiten' | 'hinweise'> & {
+export type VerkaufVorgaben = Pick<Einstellungen, 'ustSatz' | 'ustSaetze' | 'rabattarten' | 'lieferzeiten' | 'hinweise' | 'belegGruende'> & {
   /** Filialen als Vorschlag für „Abholung aus / Ausliefern von“ */
   orte: string[];
 };

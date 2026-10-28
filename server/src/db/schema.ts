@@ -74,6 +74,7 @@ export interface MandantDB {
     email: string;
     ip_bereiche: string;
     aktiv: number;
+    wechselgeld_cent: Generated<number>;
   };
   benutzer: {
     id: Generated<number>;
@@ -158,6 +159,40 @@ export interface MandantDB {
     an: string;
     betreff: string;
     anhaenge: string;
+    person: string;
+  };
+  kassenbeleg: {
+    id: Generated<number>;
+    filiale_id: number;
+    datum: string;
+    zeit: string;
+    art: 'einnahme' | 'ausgabe';
+    grund: string;
+    text: string;
+    betrag_cent: number;
+    person: string;
+    storno_von: number | null;
+  };
+  kassenabschluss: {
+    id: Generated<number>;
+    filiale_id: number;
+    datum: string;
+    zeit: string;
+    anfang_cent: number;
+    bar_zahlungen_cent: number;
+    einnahmen_cent: number;
+    ausgaben_cent: number;
+    soll_cent: number;
+    zaehlung: string;
+    ist_cent: number;
+    differenz_cent: number;
+    entnahme_cent: number;
+    z_bon_nr: string;
+    z_bar_cent: number | null;
+    ec_cent: number;
+    bemerkung: string;
+    uebergeben_von: string;
+    uebernommen_von: string;
     person: string;
   };
 }

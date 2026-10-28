@@ -209,6 +209,57 @@ export const mandantMigrationen: string[] = [
   );
   CREATE INDEX email_versand_vorgang ON email_versand(vorgang_id);
   `,
+  // Stufe 3: Kasse
+  `
+  ALTER TABLE filiale ADD COLUMN wechselgeld_cent INTEGER NOT NULL DEFAULT 0;
+  -- Kassenbelege (Einnahme/Ausgabe); Korrektur nur per Gegenbeleg (storno_von)
+  CREATE TABLE kassenbeleg (
+    id INTEGER PRIMARY KEY,
+    filiale_id INTEGER NOT NULL REFERENCES filiale(id),
+    datum TEXT NOT NULL,
+    zeit TEXT NOT NULL,
+    art TEXT NOT NULL CHECK (art IN ('einnahme', 'ausgabe')),
+    grund TEXT NOT NULL,
+    text TEXT NOT NULL DEFAULT '',
+    betrag_cent INTEGER NOT NULL CHECK (betrag_cent > 0),
+    person TEXT NOT NULL,
+    storno_von INTEGER REFERENCES kassenbeleg(id)
+  );
+  CREATE INDEX kassenbeleg_tag ON kassenbeleg(filiale_id, datum);
+  CREATE UNIQUE INDEX kassenbeleg_ein_storno ON kassenbeleg(storno_von) WHERE storno_von IS NOT NULL;
+  CREATE TRIGGER kassenbeleg_kein_update BEFORE UPDATE ON kassenbeleg
+    BEGIN SELECT RAISE(ABORT, 'Kassenbelege sind unveränderlich'); END;
+  CREATE TRIGGER kassenbeleg_kein_delete BEFORE DELETE ON kassenbeleg
+    BEGIN SELECT RAISE(ABORT, 'Kassenbelege sind unveränderlich'); END;
+  -- Tagesabschluss je Filiale und Tag
+  CREATE TABLE kassenabschluss (
+    id INTEGER PRIMARY KEY,
+    filiale_id INTEGER NOT NULL REFERENCES filiale(id),
+    datum TEXT NOT NULL,
+    zeit TEXT NOT NULL,
+    anfang_cent INTEGER NOT NULL,
+    bar_zahlungen_cent INTEGER NOT NULL,
+    einnahmen_cent INTEGER NOT NULL,
+    ausgaben_cent INTEGER NOT NULL,
+    soll_cent INTEGER NOT NULL,
+    zaehlung TEXT NOT NULL,
+    ist_cent INTEGER NOT NULL,
+    differenz_cent INTEGER NOT NULL,
+    entnahme_cent INTEGER NOT NULL,
+    z_bon_nr TEXT NOT NULL DEFAULT '',
+    z_bar_cent INTEGER,
+    ec_cent INTEGER NOT NULL DEFAULT 0,
+    bemerkung TEXT NOT NULL DEFAULT '',
+    uebergeben_von TEXT NOT NULL DEFAULT '',
+    uebernommen_von TEXT NOT NULL DEFAULT '',
+    person TEXT NOT NULL,
+    UNIQUE (filiale_id, datum)
+  );
+  CREATE TRIGGER kassenabschluss_kein_update BEFORE UPDATE ON kassenabschluss
+    BEGIN SELECT RAISE(ABORT, 'Kassenabschlüsse sind unveränderlich'); END;
+  CREATE TRIGGER kassenabschluss_kein_delete BEFORE DELETE ON kassenabschluss
+    BEGIN SELECT RAISE(ABORT, 'Kassenabschlüsse sind unveränderlich'); END;
+  `,
 ];
 
 export function migrieren(db: Database.Database, migrationen: string[]): void {

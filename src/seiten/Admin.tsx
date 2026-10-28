@@ -215,6 +215,7 @@ function Firma({ neuLaden }: { neuLaden: () => Promise<void> }) {
 function VerkaufEinstellungen({ werte, setE }: { werte: Einstellungen; setE: (e: Einstellungen) => void }) {
   const [saetze, setSaetze] = useState(werte.ustSaetze.join(', '));
   const [zeiten, setZeiten] = useState(werte.lieferzeiten.join('\n'));
+  const [gruende, setGruende] = useState(werte.belegGruende.join('\n'));
   const rabatte = werte.rabattarten;
   const setRabatt = (i: number, r: Partial<Einstellungen['rabattarten'][number]>) =>
     setE({ ...werte, rabattarten: rabatte.map((x, j) => (j === i ? { ...x, ...r } : x)) });
@@ -248,6 +249,14 @@ function VerkaufEinstellungen({ werte, setE }: { werte: Einstellungen; setE: (e:
           />
         </Feld>
       </div>
+
+      <h3 style={{ marginTop: 16 }}>Kasse: Gründe für Belege</h3>
+      <Feld titel="Einer je Zeile (Auswahl beim Beleg)">
+        <textarea value={gruende} onChange={(ev) => {
+          setGruende(ev.target.value);
+          setE({ ...werte, belegGruende: ev.target.value.split('\n').map((z) => z.trim()).filter(Boolean) });
+        }} />
+      </Feld>
 
       <h3 style={{ marginTop: 16 }}>Rabattarten</h3>
       <p className="leise">Werden im Verkauf als Knopf angeboten und gelten für die Artikel, nicht für Lieferung und Montage.</p>
@@ -292,7 +301,7 @@ function VerkaufEinstellungen({ werte, setE }: { werte: Einstellungen; setE: (e:
 // ---------- Filialen ----------
 
 const LEERE_FILIALE: Omit<Filiale, 'id'> & { id?: number } = {
-  kuerzel: '', name: '', strasse: '', plz: '', ort: '', telefon: '', fax: '', email: '', ipBereiche: [], aktiv: true,
+  kuerzel: '', name: '', strasse: '', plz: '', ort: '', telefon: '', fax: '', email: '', ipBereiche: [], aktiv: true, wechselgeldCent: 0,
 };
 
 function Filialen({ neuLaden }: { neuLaden: () => Promise<void> }) {
@@ -373,6 +382,12 @@ function FilialDialog({ filiale, schliessen, gespeichert }: { filiale: typeof LE
         {text('telefon', 'Telefon')}
         {text('fax', 'Fax')}
         {text('email', 'E-Mail')}
+        <Feld titel="Wechselgeld in der Barkasse (fester Anfangsbestand, €)">
+          <input inputMode="decimal" value={(f.wechselgeldCent / 100).toFixed(2).replace('.', ',')} onChange={(e) => {
+            const n = Number(e.target.value.replace(/\./g, '').replace(',', '.'));
+            if (Number.isFinite(n)) setF({ ...f, wechselgeldCent: Math.round(n * 100) });
+          }} />
+        </Feld>
         <Feld titel="IP-Adressen / Bereiche (eine je Zeile, z. B. 203.0.113.10 oder 203.0.113.0/29)" breit>
           <textarea className="mono" value={ipText} onChange={(e) => setIpText(e.target.value)} />
         </Feld>

@@ -30,6 +30,7 @@ export const STANDARD_EINSTELLUNGEN: Omit<Einstellungen, 'hatLogo'> = {
       text: 'Für die Inanspruchnahme einer Gewährleistung muss das Gerät durch einen Fachbetrieb angeschlossen worden sein; ein Nachweis darüber ist vorzulegen.',
     },
   ],
+  belegGruende: ['Einzahlung Bank', 'EC-Cash', 'Tanken', 'Einkauf Lager/Transport', 'Einkauf Büromaterial', 'Einkauf Putzmittel', 'Sonstiges'],
 };
 
 const jetzt = () => new Date().toISOString();
@@ -92,6 +93,7 @@ function filialeAus(z: FilialZeile): Filiale {
     email: z.email,
     ipBereiche: JSON.parse(z.ip_bereiche) as string[],
     aktiv: z.aktiv === 1,
+    wechselgeldCent: z.wechselgeld_cent,
   };
 }
 
@@ -112,6 +114,7 @@ export async function filialeSpeichern(db: Kysely<MandantDB>, f: Omit<Filiale, '
     email: f.email,
     ip_bereiche: JSON.stringify(f.ipBereiche),
     aktiv: f.aktiv ? 1 : 0,
+    wechselgeld_cent: f.wechselgeldCent,
   };
   if (f.id) {
     await db.updateTable('filiale').set(werte).where('id', '=', f.id).execute();

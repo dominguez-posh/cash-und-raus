@@ -84,6 +84,8 @@ export interface Einstellungen {
   lieferzeiten: string[];
   /** Hinweistexte zu Positions-Kennzeichen, z. B. '*' */
   hinweise: { zeichen: string; text: string }[];
+  /** Gründe für Kassenbelege (Auswahl) */
+  belegGruende: string[];
   hatLogo: boolean;
 }
 
@@ -100,6 +102,8 @@ export interface Filiale {
   /** IP-Adressen oder CIDR-Bereiche, z. B. 203.0.113.10 oder 203.0.113.0/28 */
   ipBereiche: string[];
   aktiv: boolean;
+  /** Fester Anfangsbestand der Barkasse (Wechselgeld) */
+  wechselgeldCent: number;
 }
 
 export interface Benutzer {

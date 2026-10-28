@@ -1,11 +1,10 @@
 import type { Ich } from '../../shared/types.ts';
 import { Meldung } from '../ui.tsx';
+import { darfKasse } from './Kasse.tsx';
 import { darfVerkaufen } from './Verkauf.tsx';
 
 // Funktionen des Altsystems, die noch kommen (docs/PLAN.md).
 const SPAETER: [string, string, string][] = [
-  ['Beleg erstellen', 'Ausgaben und Einnahmen der Kasse', 'Stufe 3'],
-  ['Kassenabrechnung', 'Tagesabschluss mit Zählprotokoll und Z-Bon', 'Stufe 3'],
   ['Artikel & Lager', 'Bestand je Lagerort', 'Stufe 5'],
   ['Dispo & Touren', 'Lieferkalender, Touren auf der Karte', 'Stufe 6'],
 ];
@@ -31,6 +30,12 @@ export function Start({ ich }: { ich: Ich }) {
           <h3>Rechnung suchen</h3>
           <span className="leise">Nach Nummer, Name oder Telefon; Restzahlung, Storno, Lieferschein</span>
         </a>
+        {darfKasse(ich) && ich.filiale && (
+          <a className="kachel knopf-kachel" href="#/kasse">
+            <h3>Kasse</h3>
+            <span className="leise">Belege, Tagesabschluss mit Zählprotokoll und Z-Bon</span>
+          </a>
+        )}
       </div>
       <h2 style={{ marginTop: 28 }}>Demnächst</h2>
       <div className="kacheln">
