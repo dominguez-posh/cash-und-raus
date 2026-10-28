@@ -41,44 +41,22 @@ export function VorgangAnsicht({ ich, vorgang: v, neuLaden }: { ich: Ich; vorgan
         {datumDeutsch(v.datum)} · Filiale {v.filiale.kuerzel} · {v.sachbearbeiter}
       </p>
 
-      <div className="kacheln aktionen">
-        <a className="kachel knopf-kachel" href={pdf('rechnung')} target="_blank" rel="noopener">
-          <h3>{storno ? 'Stornorechnung' : 'Rechnung'}</h3>
-          <span className="leise">PDF öffnen / drucken</span>
+      <div className="aktionen-haupt">
+        <a className="knopf" href={pdf('rechnung')} target="_blank" rel="noopener">
+          {storno ? 'Stornorechnung' : 'Rechnung'} drucken
         </a>
-        {!storno && (
-          <>
-            {v.lieferung.art !== 'mitnahme' && (
-              <a className="kachel knopf-kachel" href={pdf('lieferschein')} target="_blank" rel="noopener">
-                <h3>Lieferschein</h3>
-                <span className="leise">mit Unterschriftsfeld</span>
-              </a>
-            )}
-            <a className="kachel knopf-kachel" href={pdf('kommission')} target="_blank" rel="noopener">
-              <h3>Kommission</h3>
-              <span className="leise">fürs Lager, mit Lagerorten</span>
-            </a>
-            {offen && ZAHLUNG_ROLLEN.some((r) => ich.rollen.includes(r)) && (
-              <button className="kachel knopf-kachel primaer" onClick={() => setDialog('zahlung')}>
-                <h3>Zahlung erfassen</h3>
-                <span>offen {euro(v.offenCent)}</span>
-              </button>
-            )}
-            {darfVerkaufen(ich) && (
-              <button className="kachel knopf-kachel" onClick={() => setDialog('email')}>
-                <h3>Per E-Mail senden</h3>
-                <span className="leise">{emails.daten?.length ? `zuletzt an ${emails.daten[0]!.an}` : 'Rechnung, Lieferschein als PDF'}</span>
-              </button>
-            )}
-            {!v.storno && darfStornieren(ich) && (
-              <button className="kachel knopf-kachel" onClick={() => setDialog('storno')}>
-                <h3>Stornieren</h3>
-                <span className="leise">erzeugt eine Stornorechnung</span>
-              </button>
-            )}
-          </>
+        {!storno && offen && ZAHLUNG_ROLLEN.some((r) => ich.rollen.includes(r)) && (
+          <button className="primaer" onClick={() => setDialog('zahlung')}>Zahlung erfassen · {euro(v.offenCent)}</button>
         )}
       </div>
+      {!storno && (
+        <div className="aktionen-weitere">
+          {v.lieferung.art !== 'mitnahme' && <a className="knopf" href={pdf('lieferschein')} target="_blank" rel="noopener">Lieferschein</a>}
+          <a className="knopf" href={pdf('kommission')} target="_blank" rel="noopener">Kommission</a>
+          {darfVerkaufen(ich) && <button onClick={() => setDialog('email')}>Per E-Mail senden</button>}
+          {!v.storno && darfStornieren(ich) && <button className="gefahr" onClick={() => setDialog('storno')}>Stornieren</button>}
+        </div>
+      )}
 
       <div className="karte">
         <div className="raster">

@@ -61,9 +61,12 @@ code, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; f
 }
 .kopf .marke { display: flex; align-items: center; gap: 10px; font-weight: 650; text-decoration: none; color: var(--text); }
 .kopf .marke img { height: 32px; max-width: 140px; object-fit: contain; }
-.kopf nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.kopf nav a { padding: 6px 10px; border-radius: 8px; color: var(--text-2); text-decoration: none; }
-.kopf nav a.aktiv, .kopf nav a:hover { background: var(--flaeche-2); color: var(--text); }
+.kopf .zurueck { min-height: 44px; font-size: 16px; }
+.menue { position: relative; }
+.menue > button { min-height: 44px; }
+.menue-liste { position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; display: flex; flex-direction: column; background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius); box-shadow: 0 8px 30px rgb(0 0 0 / 18%); overflow: hidden; z-index: 10; }
+.menue-liste a, .menue-liste button { display: block; width: 100%; text-align: left; padding: 12px 16px; min-height: 48px; border: 0; border-radius: 0; background: none; color: var(--text); text-decoration: none; font-weight: 500; }
+.menue-liste a:hover, .menue-liste button:hover { background: var(--flaeche-2); }
 .kopf .rechts { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .filial-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: var(--akzent-hell); color: var(--akzent); font-weight: 600; font-size: 13px; border: 0; cursor: pointer; }
 .person { color: var(--text-2); font-size: 13px; }
@@ -171,8 +174,8 @@ input.ungueltig { border-color: var(--fehler); background: var(--fehler-hell); }
 .schritte button.erledigt .nr { background: var(--akzent-hell); color: var(--akzent); }
 
 .fussleiste {
-  position: sticky; bottom: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin: 16px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
   background: var(--flaeche); border-top: 1px solid var(--linie); box-shadow: 0 -2px 8px rgb(16 24 40 / 6%);
 }
 .fussleiste button { min-width: 110px; justify-content: center; }
@@ -187,9 +190,13 @@ input.ungueltig { border-color: var(--fehler); background: var(--fehler-hell); }
 table.summen tfoot td { border-bottom: 0; padding-top: 4px; padding-bottom: 4px; }
 table.summen tr.gesamt td { font-weight: 700; font-size: 17px; border-top: 1px solid var(--linie); padding-top: 8px; }
 
-.kacheln.haupt { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.kacheln.haupt { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.kacheln.haupt .knopf-kachel { min-height: 150px; }
+.kacheln.haupt .knopf-kachel h3 { font-size: 24px; }
+.kacheln.haupt .knopf-kachel span { font-size: 16px; }
 .knopf-kachel { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 110px; text-decoration: none; color: var(--text); cursor: pointer; font: inherit; text-align: left; }
 .knopf-kachel h3 { font-size: 19px; }
+.kacheln.haupt .knopf-kachel.primaer span { color: var(--akzent-text); opacity: .9; }
 .knopf-kachel.primaer { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-text); }
 .knopf-kachel:active { transform: scale(.99); }
 .kacheln.aktionen { margin-bottom: 16px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
@@ -211,7 +218,7 @@ table.summen tr.gesamt td { font-weight: 700; font-size: 17px; border-top: 1px s
 .treffer .offen { color: var(--fehler); font-size: 13px; }
 
 @media (max-width: 640px) {
-  .fussleiste { margin: 16px -16px 0; padding-left: 16px; padding-right: 16px; }
+  .fussleiste { padding-left: 16px; padding-right: 16px; }
   .fussleiste button { min-width: 0; }
   .treffer { grid-template-columns: 1fr auto; }
   .treffer > div:nth-child(2) { grid-column: 1; grid-row: 2; }
@@ -231,3 +238,22 @@ table.summen tr.gesamt td { font-weight: 700; font-size: 17px; border-top: 1px s
 @media (max-width: 900px) {
   .dispo-raster { grid-template-columns: 1fr; }
 }
+
+/* ---------- Vereinfachte Bedienung ---------- */
+.schritt-kopf { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.schritt-kopf h1 { margin: 0; font-size: 24px; }
+.punkte { display: flex; gap: 8px; margin-left: auto; }
+.punkte button { width: 16px; height: 16px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--linie); background: var(--flaeche-2); }
+.punkte button.aktiv { background: var(--akzent); border-color: var(--akzent); }
+.punkte button.erledigt { background: var(--akzent-hell); border-color: var(--akzent); }
+.wahl.chips button { min-height: 42px; padding: 6px 14px; font-size: 15px; min-width: 0; }
+.aufklapp { margin-top: 12px; }
+.aufklapp > button { background: none; border: 0; padding: 8px 0; min-height: 44px; color: var(--akzent); font-weight: 600; font-size: 15px; }
+.aufklapp-inhalt { margin-top: 4px; }
+.aufklapp-inhalt textarea { font-size: 17px; }
+.aktionen-haupt { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.aktionen-haupt > a, .aktionen-haupt > button { flex: 1 1 240px; justify-content: center; min-height: 64px; font-size: 18px; padding: 12px 24px; }
+.aktionen-weitere { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.aktionen-weitere > a, .aktionen-weitere > button { min-height: 44px; }
+.touch .karte { padding: 18px; }
+.touch:has(.fussleiste) { padding-bottom: 100px; }

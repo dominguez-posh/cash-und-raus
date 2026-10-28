@@ -12,7 +12,7 @@ import { darfLager, Lager } from './seiten/Lager.tsx';
 import { Mfa } from './seiten/Mfa.tsx';
 import { Plattform } from './seiten/Plattform.tsx';
 import { Start } from './seiten/Start.tsx';
-import { darfVerkaufen, VerkaufSeite } from './seiten/Verkauf.tsx';
+import { VerkaufSeite } from './seiten/Verkauf.tsx';
 import { Suche } from './seiten/Vorgang.tsx';
 import { Meldung, useRoute } from './ui.tsx';
 
@@ -21,6 +21,7 @@ export function App() {
   const [info, setInfo] = useState<AuthInfo>({ produktName: 'Cash & Raus', einrichtung: false });
   const [fehler, setFehler] = useState<string | null>(null);
   const [filialWahl, setFilialWahl] = useState(false);
+  const [menue, setMenue] = useState(false);
   const { route, besuch } = useRoute();
 
   const laden = async () => {
@@ -41,6 +42,8 @@ export function App() {
   useEffect(() => {
     document.title = ich?.mandant ? `${ich.mandant.name} – ${info.produktName}` : info.produktName;
   }, [ich, info]);
+
+  useEffect(() => setMenue(false), [route, besuch]);
 
   if (fehler) return <main><Meldung>{fehler}</Meldung></main>;
   if (ich === undefined) return null;
@@ -69,18 +72,6 @@ export function App() {
   }
 
   const istAdmin = ich.rollen.includes('admin');
-  const nav: [string, string][] = [];
-  if (ich.mandant) nav.push(['/', 'Start']);
-  if (ich.mandant && darfVerkaufen(ich)) nav.push(['/verkauf/neu', 'Neuer Verkauf']);
-  if (ich.mandant && ich.rollen.length) nav.push(['/suche', 'Suche']);
-  if (ich.mandant && darfKasse(ich)) nav.push(['/kasse', 'Kasse']);
-  if (ich.mandant && darfLager(ich)) nav.push(['/lager', 'Lager']);
-  if (ich.mandant && darfDispo(ich)) nav.push(['/dispo', 'Dispo']);
-  if (ich.mandant && darfFahren(ich)) nav.push(['/tour', 'Meine Tour']);
-  if (ich.mandant && istAdmin) nav.push(['/admin', 'Verwaltung']);
-  if (ich.plattformAdmin) nav.push(['/plattform', 'Plattform']);
-  if (ich.art === 'lokal') nav.push(['/konto', 'Mein Konto']);
-
   const vorgangId = /^\/verkauf\/(neu|\d+)$/.exec(route)?.[1];
   let seite;
   if (route === '/konto' && ich.art === 'lokal') seite = <Konto />;
@@ -96,22 +87,19 @@ export function App() {
   else if (ich.plattformAdmin) seite = <Plattform ich={ich} neuLaden={laden} />;
   else seite = <Meldung>Kein Mandant zugeordnet.</Meldung>;
 
-  const aktiv = ich.mandant ? route : route === '/konto' ? '/konto' : '/plattform';
+  const startSeite = route === '/' || (!ich.mandant && route === '/plattform');
 
   return (
     <>
       <header className="kopf">
-        <a className="marke" href="#/">
-          {ich.mandant?.hatLogo ? <img src="/api/mandant/logo" alt="" /> : <img src="/favicon.svg" alt="" />}
-          <span>{ich.mandant?.name ?? info.produktName}</span>
-        </a>
-        <nav>
-          {nav.map(([pfad, titel]) => (
-            <a key={pfad} href={`#${pfad}`} className={aktiv === pfad ? 'aktiv' : ''}>
-              {titel}
-            </a>
-          ))}
-        </nav>
+        {startSeite ? (
+          <a className="marke" href="#/">
+            {ich.mandant?.hatLogo ? <img src="/api/mandant/logo" alt="" /> : <img src="/favicon.svg" alt="" />}
+            <span>{ich.mandant?.name ?? info.produktName}</span>
+          </a>
+        ) : (
+          <a className="knopf zurueck" href={ich.mandant ? '#/' : '#/plattform'}>← Start</a>
+        )}
         <div className="rechts">
           {ich.filiale && (
             <button
@@ -120,26 +108,36 @@ export function App() {
               onClick={() => ich.filialen.length > 1 && setFilialWahl(true)}
             >
               {ich.filiale.kuerzel} · {ich.filiale.name}
-              {ich.filiale.perIp ? ' (IP)' : ''}
             </button>
           )}
-          {ich.plattformAdmin && ich.mandant && (
-            <button
-              className="link"
-              onClick={async () => {
-                await api.post('/api/plattform/verlassen');
-                location.hash = '#/plattform';
-                await laden();
-              }}
-            >
-              Betreuung beenden
+          <div className="menue">
+            <button onClick={() => setMenue((m) => !m)} aria-expanded={menue} aria-haspopup="menu">
+              {ich.name.split(' ')[0]} ▾
             </button>
-          )}
-          <span className="person">{ich.name}</span>
-          <button onClick={abmelden}>Abmelden</button>
+            {menue && (
+              <div className="menue-liste" role="menu">
+                {ich.mandant && istAdmin && <a href="#/admin" role="menuitem">Verwaltung</a>}
+                {ich.plattformAdmin && <a href="#/plattform" role="menuitem">Plattform</a>}
+                {ich.art === 'lokal' && <a href="#/konto" role="menuitem">Mein Konto</a>}
+                {ich.plattformAdmin && ich.mandant && (
+                  <button
+                    role="menuitem"
+                    onClick={async () => {
+                      await api.post('/api/plattform/verlassen');
+                      location.hash = '#/plattform';
+                      await laden();
+                    }}
+                  >
+                    Betreuung beenden
+                  </button>
+                )}
+                <button role="menuitem" onClick={abmelden}>Abmelden</button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
-      <main>{seite}</main>
+      <main onClick={() => menue && setMenue(false)}>{seite}</main>
     </>
   );
 }

@@ -103,6 +103,19 @@ export function speicherSchreiben(schluessel: string, wert: string): void {
   }
 }
 
+/** Selten gebrauchte Felder, erst auf Antippen sichtbar */
+export function Aufklapp({ titel = 'Weitere Angaben', offen: start = false, children }: { titel?: string; offen?: boolean; children: ReactNode }) {
+  const [offen, setOffen] = useState(start);
+  return (
+    <div className="aufklapp">
+      <button type="button" onClick={() => setOffen((o) => !o)} aria-expanded={offen}>
+        {offen ? '▾' : '▸'} {titel}
+      </button>
+      {offen && <div className="aufklapp-inhalt">{children}</div>}
+    </div>
+  );
+}
+
 /** Abfrageparameter hinter der Route (#/admin?entra=ok) lesen und entfernen */
 export function hashParameter(): URLSearchParams {
   const [pfad, abfrage] = location.hash.split('?');

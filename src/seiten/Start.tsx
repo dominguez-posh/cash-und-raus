@@ -1,3 +1,4 @@
+// Startseite: wenige große Kacheln je Rolle. Die Navigation läuft über diese Kacheln.
 import type { Ich } from '../../shared/types.ts';
 import { Meldung } from '../ui.tsx';
 import { darfDispo } from './Dispo.tsx';
@@ -6,14 +7,15 @@ import { darfKasse } from './Kasse.tsx';
 import { darfLager } from './Lager.tsx';
 import { darfVerkaufen } from './Verkauf.tsx';
 
-// Später (docs/PLAN.md, Stufe 7).
-const SPAETER: [string, string, string][] = [
-  ['GPS-Tracker', 'Live-Position der Wagen auf der Karte', 'Stufe 7'],
-  ['Kasse mit TSE', 'Eigene Kassenfunktion mit Cloud-TSE und DSFinV-K', 'Stufe 7'],
-];
-
 export function Start({ ich }: { ich: Ich }) {
-  const verkauf = darfVerkaufen(ich);
+  const kacheln: { pfad: string; titel: string; text: string; haupt?: boolean }[] = [];
+  if (darfVerkaufen(ich) && ich.filiale) kacheln.push({ pfad: '/verkauf/neu', titel: 'Neuer Verkauf', text: 'Rechnung schreiben', haupt: true });
+  if (ich.rollen.length) kacheln.push({ pfad: '/suche', titel: 'Rechnung suchen', text: 'Nachsehen, drucken, Restzahlung' });
+  if (darfKasse(ich) && ich.filiale) kacheln.push({ pfad: '/kasse', titel: 'Kasse', text: 'Belege und Tagesabschluss' });
+  if (darfLager(ich)) kacheln.push({ pfad: '/lager', titel: 'Lager', text: 'Bestand und Wareneingang' });
+  if (darfDispo(ich)) kacheln.push({ pfad: '/dispo', titel: 'Dispo', text: 'Lieferungen und Touren' });
+  if (darfFahren(ich) && !darfDispo(ich)) kacheln.push({ pfad: '/tour', titel: 'Meine Tour', text: 'Stopps von heute' });
+
   return (
     <>
       <h1>Guten Tag, {ich.name.split(' ')[0]}</h1>
@@ -23,51 +25,18 @@ export function Start({ ich }: { ich: Ich }) {
         </Meldung>
       )}
       <div className="kacheln haupt">
-        {verkauf && ich.filiale && (
-          <a className="kachel knopf-kachel primaer" href="#/verkauf/neu">
-            <h3>Neuer Verkauf</h3>
-            <span>Rechnung mit Anzahlung, Lieferung, Montage</span>
+        {kacheln.map((k) => (
+          <a key={k.pfad} className={`kachel knopf-kachel${k.haupt ? ' primaer' : ''}`} href={`#${k.pfad}`}>
+            <h3>{k.titel}</h3>
+            <span className={k.haupt ? '' : 'leise'}>{k.text}</span>
           </a>
-        )}
-        <a className="kachel knopf-kachel" href="#/suche">
-          <h3>Rechnung suchen</h3>
-          <span className="leise">Nach Nummer, Name oder Telefon; Restzahlung, Storno, Lieferschein</span>
-        </a>
-        {darfKasse(ich) && ich.filiale && (
-          <a className="kachel knopf-kachel" href="#/kasse">
-            <h3>Kasse</h3>
-            <span className="leise">Belege, Tagesabschluss mit Zählprotokoll und Z-Bon</span>
-          </a>
-        )}
-        {darfLager(ich) && (
-          <a className="kachel knopf-kachel" href="#/lager">
-            <h3>Lager</h3>
-            <span className="leise">Bestand, Wareneingang, Umlagerung, Inventur</span>
-          </a>
-        )}
-        {darfDispo(ich) && (
-          <a className="kachel knopf-kachel" href="#/dispo">
-            <h3>Dispo</h3>
-            <span className="leise">Lieferungen heute, Touren auf der Karte, Tourenzettel</span>
-          </a>
-        )}
-        {darfFahren(ich) && !darfDispo(ich) && (
-          <a className="kachel knopf-kachel" href="#/tour">
-            <h3>Meine Tour</h3>
-            <span className="leise">Stopps, Navigation, Geliefert, Kassieren</span>
-          </a>
-        )}
-      </div>
-      <h2 style={{ marginTop: 28 }}>Demnächst</h2>
-      <div className="kacheln">
-        {SPAETER.map(([titel, text, stufe]) => (
-          <div className="kachel" key={titel}>
-            <h3>{titel}</h3>
-            <p className="leise">{text}</p>
-            <span className="stufe">kommt in {stufe}</span>
-          </div>
         ))}
       </div>
+      {ich.rollen.includes('admin') && (
+        <p className="leise" style={{ marginTop: 24 }}>
+          Verwaltung (Firma, Filialen, Benutzer, Artikel, Import) finden Sie oben rechts im Menü unter Ihrem Namen.
+        </p>
+      )}
     </>
   );
 }

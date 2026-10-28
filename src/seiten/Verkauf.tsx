@@ -1,5 +1,7 @@
 // Neuer Verkauf in Schritten (Touch-first): Kunde → Artikel → Lieferung → Zahlung → Abschluss.
+// Je Schritt nur das Nötige; Seltenes steht hinter „Weitere Angaben“.
 import { type ReactNode, useEffect, useRef, useState } from 'react';
+import type { Artikel } from '../../shared/lager.ts';
 import type { Ich } from '../../shared/types.ts';
 import {
   ANREDEN,
@@ -26,13 +28,14 @@ import {
   type Vorgang,
   type VorgangDaten,
 } from '../../shared/verkauf.ts';
-import type { Artikel } from '../../shared/lager.ts';
 import { api } from '../api.ts';
-import { Feld, Meldung, useAktion, useLaden } from '../ui.tsx';
+import { Aufklapp, Feld, Meldung, useAktion, useLaden } from '../ui.tsx';
 import { VorgangAnsicht } from './Vorgang.tsx';
 
 export const darfVerkaufen = (ich: Ich) => VERKAUF_ROLLEN.some((r) => ich.rollen.includes(r));
 export const darfStornieren = (ich: Ich) => STORNO_ROLLEN.some((r) => ich.rollen.includes(r));
+
+type Pos = VorgangDaten['positionen'][number];
 
 /** Eingaben, die der Server speichert (ohne berechnete Felder) */
 function datenAus(v: Vorgang): VorgangDaten {
@@ -111,13 +114,15 @@ function Schritte({ vorgaben, start, fertig }: { vorgaben: VerkaufVorgaben; star
 
   return (
     <div className="touch">
-      <nav className="schritte" aria-label="Schritte">
-        {SCHRITTE.map((t, i) => (
-          <button key={t} className={i === schritt ? 'aktiv' : i < schritt ? 'erledigt' : ''} onClick={() => gehe(i)} disabled={a.laeuft}>
-            <span className="nr">{i + 1}</span> {t}
-          </button>
-        ))}
-      </nav>
+      <div className="schritt-kopf">
+        <h1>{SCHRITTE[schritt]}</h1>
+        <span className="leise">Schritt {schritt + 1} von {SCHRITTE.length}</span>
+        <div className="punkte" aria-label="Schritte">
+          {SCHRITTE.map((t, i) => (
+            <button key={t} title={t} aria-label={`${i + 1} ${t}`} className={i === schritt ? 'aktiv' : i < schritt ? 'erledigt' : ''} onClick={() => gehe(i)} disabled={a.laeuft} />
+          ))}
+        </div>
+      </div>
 
       {schritt === 0 && <KundeSchritt d={d} setD={setD} />}
       {schritt === 1 && <ArtikelSchritt d={d} setD={setD} vorgaben={vorgaben} />}
@@ -126,11 +131,13 @@ function Schritte({ vorgaben, start, fertig }: { vorgaben: VerkaufVorgaben; star
       {schritt === 4 && (
         <AbschlussSchritt d={d} setD={setD} summen={summen}>
           <Meldung>{a.fehler}</Meldung>
-          <div className="knopfreihe">
-            <button className="primaer gross" onClick={festschreiben} disabled={a.laeuft}>Rechnung festschreiben</button>
-            <button className="gross" onClick={vorschau} disabled={a.laeuft}>Vorschau (PDF)</button>
-            <button className="gross" onClick={() => a.ausfuehren(speichern, 'Entwurf gespeichert.')} disabled={a.laeuft}>Entwurf speichern</button>
-            <button className="gross gefahr" onClick={loeschen} disabled={a.laeuft}>Verwerfen</button>
+          <div className="aktionen-haupt">
+            <button className="primaer" onClick={festschreiben} disabled={a.laeuft}>Rechnung festschreiben</button>
+            <button onClick={vorschau} disabled={a.laeuft}>Vorschau (PDF)</button>
+          </div>
+          <div className="aktionen-weitere">
+            <button onClick={() => a.ausfuehren(speichern, 'Entwurf gespeichert.')} disabled={a.laeuft}>Entwurf speichern</button>
+            <button className="gefahr" onClick={loeschen} disabled={a.laeuft}>Verwerfen</button>
           </div>
           <Meldung art="ok">{a.ok}</Meldung>
         </AbschlussSchritt>
@@ -157,10 +164,10 @@ type SchrittProps = { d: VorgangDaten; setD: (d: VorgangDaten) => void };
 
 // ---------- Bausteine ----------
 
-/** Auswahl per Knopf statt Dropdown */
-export function Wahl<T extends string | number | boolean | null>({ optionen, wert, aendern }: { optionen: [T, string][]; wert: T; aendern: (w: T) => void }) {
+/** Auswahl per Knopf statt Dropdown; `klein` für Zeilen mit vielen Werten */
+export function Wahl<T extends string | number | boolean | null>({ optionen, wert, aendern, klein }: { optionen: [T, string][]; wert: T; aendern: (w: T) => void; klein?: boolean }) {
   return (
-    <div className="wahl" role="radiogroup">
+    <div className={`wahl${klein ? ' chips' : ''}`} role="radiogroup">
       {optionen.map(([w, t]) => (
         <button key={String(w)} role="radio" aria-checked={w === wert} className={w === wert ? 'aktiv' : ''} onClick={() => aendern(w)} type="button">
           {t}
@@ -206,11 +213,7 @@ function AnschriftFelder({ a, setA }: { a: Anschrift; setA: (a: Anschrift) => vo
   );
   return (
     <>
-      <div className="breit">
-        <Wahl optionen={ANREDEN.map((x) => [x, x || 'ohne'])} wert={a.anrede} aendern={(anrede) => setA({ ...a, anrede })} />
-      </div>
       {feld('name', 'Name', { autoComplete: 'off' })}
-      {feld('zusatz', 'Zusatz (z. B. c/o, Firma)')}
       {feld('strasse', 'Straße, Hausnr.')}
       {feld('plz', 'PLZ', { inputMode: 'numeric' })}
       {feld('ort', 'Ort')}
@@ -232,8 +235,8 @@ function KundeSchritt({ d, setD }: SchrittProps) {
 
   return (
     <div className="karte">
-      <h2>Kunde</h2>
-      <div className="raster">
+      <Wahl klein optionen={ANREDEN.map((x) => [x, x || 'ohne Anrede'])} wert={k.anrede} aendern={(anrede) => setD({ ...d, kunde: { ...k, anrede } })} />
+      <div className="raster" style={{ marginTop: 12 }}>
         <AnschriftFelder
           a={k}
           setA={(a) => {
@@ -243,10 +246,11 @@ function KundeSchritt({ d, setD }: SchrittProps) {
         />
         {vorschlaege.length > 0 && (
           <div className="breit vorschlaege">
-            <span className="leise">Frühere Kunden:</span>
+            <span className="leise">Schon einmal gekauft:</span>
             {vorschlaege.map((v) => (
               <button
                 key={`${v.name}|${v.strasse}|${v.plz}`}
+                type="button"
                 onClick={() => {
                   setD({ ...d, kunde: v });
                   setOffen(false);
@@ -260,21 +264,27 @@ function KundeSchritt({ d, setD }: SchrittProps) {
         <Feld titel="Telefon">
           <input type="tel" value={k.telefon} onChange={(e) => setD({ ...d, kunde: { ...k, telefon: e.target.value } })} />
         </Feld>
-        <Feld titel="E-Mail">
-          <input type="email" value={k.email} onChange={(e) => setD({ ...d, kunde: { ...k, email: e.target.value } })} />
-        </Feld>
       </div>
-      <h3 style={{ marginTop: 20 }}>Rechnungsanschrift</h3>
-      <Wahl
-        optionen={[[false, 'wie Kunde'], [true, 'abweichend']]}
-        wert={d.rechnungsanschrift !== null}
-        aendern={(ab) => setD({ ...d, rechnungsanschrift: ab ? { ...LEERE_ANSCHRIFT } : null })}
-      />
-      {d.rechnungsanschrift && (
-        <div className="raster" style={{ marginTop: 12 }}>
-          <AnschriftFelder a={d.rechnungsanschrift} setA={(a) => setD({ ...d, rechnungsanschrift: a })} />
+      <Aufklapp offen={Boolean(k.zusatz || k.email || d.rechnungsanschrift)}>
+        <div className="raster">
+          <Feld titel="Zusatz (z. B. c/o, Firma)">
+            <input value={k.zusatz} onChange={(e) => setD({ ...d, kunde: { ...k, zusatz: e.target.value } })} />
+          </Feld>
+          <Feld titel="E-Mail (für den Rechnungsversand)">
+            <input type="email" value={k.email} onChange={(e) => setD({ ...d, kunde: { ...k, email: e.target.value } })} />
+          </Feld>
+          <div className="feld breit">
+            Rechnungsanschrift
+            <Wahl
+              klein
+              optionen={[[false, 'wie Kunde'], [true, 'abweichend']]}
+              wert={d.rechnungsanschrift !== null}
+              aendern={(ab) => setD({ ...d, rechnungsanschrift: ab ? { ...LEERE_ANSCHRIFT } : null })}
+            />
+          </div>
+          {d.rechnungsanschrift && <AnschriftFelder a={d.rechnungsanschrift} setA={(a) => setD({ ...d, rechnungsanschrift: a })} />}
         </div>
-      )}
+      </Aufklapp>
     </div>
   );
 }
@@ -282,9 +292,8 @@ function KundeSchritt({ d, setD }: SchrittProps) {
 // ---------- 2 Artikel ----------
 
 function ArtikelSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: VerkaufVorgaben }) {
-  const setPos = (i: number, p: Partial<VorgangDaten['positionen'][number]>) =>
-    setD({ ...d, positionen: d.positionen.map((x, j) => (j === i ? { ...x, ...p } : x)) });
-  const kennzeichen = vorgaben.hinweise.map((h) => h.zeichen);
+  const setPos = (i: number, p: Partial<Pos>) => setD({ ...d, positionen: d.positionen.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+  const mehrNoetig = vorgaben.ustSaetze.length > 1 || vorgaben.lagerorte.length > 0 || vorgaben.hinweise.length > 0;
   return (
     <>
       {d.positionen.map((p, i) => (
@@ -293,7 +302,7 @@ function ArtikelSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkau
             <strong>Artikel {i + 1}</strong>
             <span className="leise">{positionGefuellt(p) ? euro(positionBrutto(p)) : ''}</span>
             {d.positionen.length > 1 && (
-              <button className="gefahr" onClick={() => setD({ ...d, positionen: d.positionen.filter((_, j) => j !== i) })}>Entfernen</button>
+              <button className="link gefahr" onClick={() => setD({ ...d, positionen: d.positionen.filter((_, j) => j !== i) })}>entfernen</button>
             )}
           </div>
           <div className="raster">
@@ -307,67 +316,71 @@ function ArtikelSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkau
               </div>
             </div>
             <div className="feld">
-              Einzelpreis (brutto)
+              Preis (brutto)
               <Betrag cent={p.preisCent} aendern={(preisCent) => setPos(i, { preisCent })} aria-label={`Preis Artikel ${i + 1}`} />
             </div>
-            {vorgaben.ustSaetze.length > 1 && (
-              <div className="feld">
-                USt
-                <Wahl optionen={vorgaben.ustSaetze.map((s) => [s, `${s} %`])} wert={p.ust} aendern={(ust) => setPos(i, { ust })} />
-              </div>
-            )}
-            {vorgaben.lagerorte.length ? (
-              <div className="feld">
-                Lagerort
-                <Wahl
-                  optionen={[[null, p.artikelId ? 'Standard' : '–'], ...vorgaben.lagerorte.map((l) => [l.id, l.name] as [number, string])]}
-                  wert={p.lagerortId ?? null}
-                  aendern={(id) => setPos(i, { lagerortId: id, lagerort: vorgaben.lagerorte.find((l) => l.id === id)?.name ?? '' })}
-                />
-              </div>
-            ) : (
-              <Feld titel="Lagerort (falls abweichend)">
-                <input value={p.lagerort} onChange={(e) => setPos(i, { lagerort: e.target.value })} />
-              </Feld>
-            )}
-            {kennzeichen.length > 0 && (
-              <div className="feld breit">
-                Hinweise
-                <div className="wahl">
-                  {vorgaben.hinweise.map((h) => {
-                    const an = p.kennzeichen.includes(h.zeichen);
-                    return (
-                      <button
-                        key={h.zeichen}
-                        className={an ? 'aktiv' : ''}
-                        aria-pressed={an}
-                        title={h.text}
-                        onClick={() => setPos(i, { kennzeichen: an ? p.kennzeichen.filter((z) => z !== h.zeichen) : [...p.kennzeichen, h.zeichen] })}
-                      >
-                        ({h.zeichen}) {h.text.length > 40 ? `${h.text.slice(0, 40)}…` : h.text}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
+          {mehrNoetig && (
+            <Aufklapp titel="USt, Lagerort, Hinweise" offen={p.kennzeichen.length > 0 || (p.lagerortId ?? null) !== null || p.ust !== vorgaben.ustSatz}>
+              <div className="raster">
+                {vorgaben.ustSaetze.length > 1 && (
+                  <div className="feld">
+                    USt
+                    <Wahl klein optionen={vorgaben.ustSaetze.map((s) => [s, `${s} %`])} wert={p.ust} aendern={(ust) => setPos(i, { ust })} />
+                  </div>
+                )}
+                {vorgaben.lagerorte.length > 0 ? (
+                  <div className="feld">
+                    Lagerort
+                    <Wahl
+                      klein
+                      optionen={[[null, p.artikelId ? 'Standard' : '–'], ...vorgaben.lagerorte.map((l) => [l.id, l.name] as [number, string])]}
+                      wert={p.lagerortId ?? null}
+                      aendern={(lid) => setPos(i, { lagerortId: lid, lagerort: vorgaben.lagerorte.find((l) => l.id === lid)?.name ?? '' })}
+                    />
+                  </div>
+                ) : (
+                  <Feld titel="Lagerort">
+                    <input value={p.lagerort} onChange={(e) => setPos(i, { lagerort: e.target.value })} />
+                  </Feld>
+                )}
+                {vorgaben.hinweise.length > 0 && (
+                  <div className="feld breit">
+                    Hinweis auf der Rechnung
+                    <div className="wahl chips">
+                      {vorgaben.hinweise.map((h) => {
+                        const an = p.kennzeichen.includes(h.zeichen);
+                        return (
+                          <button key={h.zeichen} type="button" className={an ? 'aktiv' : ''} aria-pressed={an} title={h.text}
+                            onClick={() => setPos(i, { kennzeichen: an ? p.kennzeichen.filter((z) => z !== h.zeichen) : [...p.kennzeichen, h.zeichen] })}>
+                            ({h.zeichen}) {h.text.length > 32 ? `${h.text.slice(0, 32)}…` : h.text}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Aufklapp>
+          )}
         </div>
       ))}
-      <div className="knopfreihe" style={{ marginTop: 0, marginBottom: 16 }}>
+      <div className="aktionen-weitere">
         <button className="gross" onClick={() => setD({ ...d, positionen: [...d.positionen, leerePosition(vorgaben.ustSatz)] })} disabled={d.positionen.length >= 50}>
           + Weiterer Artikel
         </button>
       </div>
       {vorgaben.rabattarten.length > 0 && (
         <div className="karte">
-          <h2>Rabatt</h2>
-          <Wahl
-            optionen={[[null, 'kein Rabatt'], ...vorgaben.rabattarten.map((r) => [r.kuerzel, `${r.name} (−${r.prozent} %)`] as [string, string])]}
-            wert={d.rabatt?.kuerzel ?? null}
-            aendern={(kz) => setD({ ...d, rabatt: vorgaben.rabattarten.find((r) => r.kuerzel === kz) ?? null })}
-          />
-          <p className="leise" style={{ marginTop: 8 }}>Gilt für die Artikel, nicht für Lieferung und Montage.</p>
+          <div className="feld">
+            Rabatt auf die Artikel
+            <Wahl
+              klein
+              optionen={[[null, 'kein Rabatt'], ...vorgaben.rabattarten.map((r) => [r.kuerzel, `${r.name} −${r.prozent} %`] as [string, string])]}
+              wert={d.rabatt?.kuerzel ?? null}
+              aendern={(kz) => setD({ ...d, rabatt: vorgaben.rabattarten.find((r) => r.kuerzel === kz) ?? null })}
+            />
+          </div>
         </div>
       )}
     </>
@@ -375,7 +388,7 @@ function ArtikelSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkau
 }
 
 /** Bezeichnung mit Vorschlägen aus dem Artikelstamm; Auswahl übernimmt Preis, USt und Lagerort */
-function ArtikelFeld({ p, setP, vorgaben }: { p: VorgangDaten['positionen'][number]; setP: (x: Partial<VorgangDaten['positionen'][number]>) => void; vorgaben: VerkaufVorgaben }) {
+function ArtikelFeld({ p, setP, vorgaben }: { p: Pos; setP: (x: Partial<Pos>) => void; vorgaben: VerkaufVorgaben }) {
   const [vorschlaege, setVorschlaege] = useState<Artikel[]>([]);
   const [offen, setOffen] = useState(false);
   useEffect(() => {
@@ -385,7 +398,7 @@ function ArtikelFeld({ p, setP, vorgaben }: { p: VorgangDaten['positionen'][numb
   }, [p.text, p.artikelId, offen]);
   return (
     <div className="feld breit">
-      Bezeichnung {p.artikelId && <span className="marker gruen">Artikelstamm</span>}
+      Artikel {p.artikelId && <span className="marker gruen">aus dem Artikelstamm</span>}
       <input
         value={p.text}
         placeholder="z. B. Kleiderschrank Eiche"
@@ -419,65 +432,77 @@ function ArtikelFeld({ p, setP, vorgaben }: { p: VorgangDaten['positionen'][numb
 
 // ---------- 3 Lieferung ----------
 
-const ETAGEN: [number, string][] = [[-1, 'Bordsteinkante'], [0, 'EG'], ...Array.from({ length: 10 }, (_, i) => [i + 1, `${i + 1}. OG`] as [number, string])];
+const ETAGEN: [number, string][] = [[-1, 'Bordstein'], [0, 'EG'], ...Array.from({ length: 10 }, (_, i) => [i + 1, `${i + 1}.`] as [number, string])];
 
 function LieferSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: VerkaufVorgaben }) {
   const l = d.lieferung;
   const setL = (x: Partial<VorgangDaten['lieferung']>) => setD({ ...d, lieferung: { ...l, ...x } });
   return (
     <div className="karte">
-      <h2>Lieferung</h2>
       <Wahl optionen={LIEFERARTEN.map((x) => [x, LIEFERART_NAMEN[x]])} wert={l.art} aendern={(art) => setL({ art })} />
-      {l.art !== 'mitnahme' && (
+      {l.art === 'abholung' && (
         <div className="raster" style={{ marginTop: 16 }}>
-          <Feld titel={l.art === 'lieferung' ? 'Ausliefern von' : 'Abholung aus'}>
+          <Feld titel="Abholtag">
+            <input type="date" value={l.datum ?? ''} onChange={(e) => setL({ datum: e.target.value || null })} />
+          </Feld>
+          <Feld titel="Abholung aus">
             <input value={l.von} onChange={(e) => setL({ von: e.target.value })} list="orte" />
             <datalist id="orte">{vorgaben.orte.map((o) => <option key={o} value={o} />)}</datalist>
           </Feld>
-          <Feld titel={l.art === 'lieferung' ? 'Liefertag' : 'Abholtag'}>
-            <input type="date" value={l.datum ?? ''} onChange={(e) => setL({ datum: e.target.value || null })} />
-          </Feld>
-          {l.art === 'lieferung' && (
-            <>
-              <div className="feld breit">
-                Zeitfenster
-                <Wahl optionen={[['', 'offen'], ...vorgaben.lieferzeiten.map((z) => [z, z] as [string, string])]} wert={l.zeitfenster} aendern={(zeitfenster) => setL({ zeitfenster })} />
-              </div>
-              <div className="feld breit">
-                Etage {etageText(l) && <strong>– {etageText(l)}</strong>}
-                <Wahl optionen={ETAGEN} wert={l.etage} aendern={(etage) => setL({ etage })} />
-                {l.etage !== null && l.etage > 0 && <Wahl optionen={[[false, 'ohne Aufzug'], [true, 'mit Aufzug']]} wert={l.aufzug} aendern={(aufzug) => setL({ aufzug })} />}
-              </div>
-              <div className="feld">
-                Lieferkosten
-                <Betrag cent={l.lieferkostenCent} aendern={(lieferkostenCent) => setL({ lieferkostenCent })} />
-                <Entfernung d={d} uebernehmen={(lieferkostenCent) => setL({ lieferkostenCent })} />
-              </div>
-              <div className="feld breit">
-                Montage
-                <Wahl optionen={[[false, 'Keine Montage'], [true, 'Mit Montage']]} wert={l.montage} aendern={(montage) => setL({ montage })} />
-              </div>
-              {l.montage && (
-                <>
-                  <div className="feld breit">
-                    Voraussichtliche Dauer
-                    <Wahl optionen={MONTAGE_MINUTEN.map((m) => [m, `${m} min`])} wert={l.montageMinuten as (typeof MONTAGE_MINUTEN)[number]} aendern={(montageMinuten) => setL({ montageMinuten })} />
-                  </div>
-                  <div className="feld">
-                    Montagekosten
-                    <Betrag cent={l.montagekostenCent} aendern={(montagekostenCent) => setL({ montagekostenCent })} />
-                  </div>
-                </>
-              )}
+        </div>
+      )}
+      {l.art === 'lieferung' && (
+        <>
+          <div className="raster" style={{ marginTop: 16 }}>
+            <Feld titel="Liefertag">
+              <input type="date" value={l.datum ?? ''} onChange={(e) => setL({ datum: e.target.value || null })} />
+            </Feld>
+            <div className="feld breit">
+              Zeitfenster
+              <Wahl klein optionen={[['', 'offen'], ...vorgaben.lieferzeiten.map((z) => [z, z] as [string, string])]} wert={l.zeitfenster} aendern={(zeitfenster) => setL({ zeitfenster })} />
+            </div>
+            <div className="feld breit">
+              Etage {etageText(l) && <strong>– {etageText(l)}</strong>}
+              <Wahl klein optionen={ETAGEN} wert={l.etage} aendern={(etage) => setL({ etage })} />
+              {l.etage !== null && l.etage > 0 && <Wahl klein optionen={[[false, 'ohne Aufzug'], [true, 'mit Aufzug']]} wert={l.aufzug} aendern={(aufzug) => setL({ aufzug })} />}
+            </div>
+            <div className="feld">
+              Lieferkosten
+              <Betrag cent={l.lieferkostenCent} aendern={(lieferkostenCent) => setL({ lieferkostenCent })} />
+              <Entfernung d={d} uebernehmen={(lieferkostenCent) => setL({ lieferkostenCent })} />
+            </div>
+            <div className="feld">
+              Montage
+              <Wahl klein optionen={[[false, 'keine'], [true, 'mit Montage']]} wert={l.montage} aendern={(montage) => setL({ montage })} />
+            </div>
+            {l.montage && (
+              <>
+                <div className="feld">
+                  Dauer
+                  <Wahl klein optionen={MONTAGE_MINUTEN.map((m) => [m, `${m} min`])} wert={l.montageMinuten as (typeof MONTAGE_MINUTEN)[number]} aendern={(montageMinuten) => setL({ montageMinuten })} />
+                </div>
+                <div className="feld">
+                  Montagekosten
+                  <Betrag cent={l.montagekostenCent} aendern={(montagekostenCent) => setL({ montagekostenCent })} />
+                </div>
+              </>
+            )}
+          </div>
+          <Aufklapp offen={Boolean(l.von || l.wagen || l.hinweis)}>
+            <div className="raster">
+              <Feld titel="Ausliefern von">
+                <input value={l.von} onChange={(e) => setL({ von: e.target.value })} list="orte" />
+                <datalist id="orte">{vorgaben.orte.map((o) => <option key={o} value={o} />)}</datalist>
+              </Feld>
               <Feld titel="Wagen">
                 <input value={l.wagen} onChange={(e) => setL({ wagen: e.target.value })} />
               </Feld>
-            </>
-          )}
-          <Feld titel="Hinweis für Lager/Fahrer" breit>
-            <textarea value={l.hinweis} onChange={(e) => setL({ hinweis: e.target.value })} />
-          </Feld>
-        </div>
+              <Feld titel="Hinweis für Lager und Fahrer" breit>
+                <textarea value={l.hinweis} onChange={(e) => setL({ hinweis: e.target.value })} />
+              </Feld>
+            </div>
+          </Aufklapp>
+        </>
       )}
     </div>
   );
@@ -495,11 +520,11 @@ function Entfernung({ d, uebernehmen }: { d: VorgangDaten; uebernehmen: (cent: n
         disabled={a.laeuft || !k.strasse || !k.ort}
         onClick={() => a.ausfuehren(async () => setErgebnis(await api.post('/api/dispo/entfernung', { strasse: k.strasse, plz: k.plz, ort: k.ort })))}
       >
-        Nach Entfernung berechnen
+        Nach Entfernung
       </button>
       {ergebnis && (
         <span>
-          {ergebnis.km} km, ca. {ergebnis.minuten} min → <button type="button" className="link" onClick={() => uebernehmen(ergebnis.vorschlagCent)}>{euro(ergebnis.vorschlagCent)} übernehmen</button>
+          {ergebnis.km} km → <button type="button" className="link" onClick={() => uebernehmen(ergebnis.vorschlagCent)}>{euro(ergebnis.vorschlagCent)} übernehmen</button>
         </span>
       )}
       <Meldung>{a.fehler}</Meldung>
@@ -523,16 +548,18 @@ function ZahlSchritt({ d, setD, bruttoCent }: SchrittProps & { bruttoCent: numbe
   const rest = bruttoCent - z.anzahlungCent;
   return (
     <div className="karte">
-      <h2>Zahlung</h2>
-      <p>Rechnungsbetrag: <strong>{euro(bruttoCent)}</strong></p>
-      <Wahl<Art>
-        optionen={[['voll', 'Jetzt vollständig'], ['anzahlung', 'Anzahlung'], ['keine', 'Jetzt nichts']]}
-        wert={art}
-        aendern={(a) => {
-          setArt(a);
-          setZ({ anzahlungCent: a === 'voll' ? bruttoCent : a === 'keine' ? 0 : Math.min(z.anzahlungCent, bruttoCent) });
-        }}
-      />
+      <p style={{ fontSize: 18 }}>Rechnungsbetrag: <strong>{euro(bruttoCent)}</strong></p>
+      <div className="feld">
+        Der Kunde zahlt jetzt
+        <Wahl<Art>
+          optionen={[['voll', 'alles'], ['anzahlung', 'eine Anzahlung'], ['keine', 'nichts']]}
+          wert={art}
+          aendern={(x) => {
+            setArt(x);
+            setZ({ anzahlungCent: x === 'voll' ? bruttoCent : x === 'keine' ? 0 : Math.min(z.anzahlungCent, bruttoCent) });
+          }}
+        />
+      </div>
       {art !== 'keine' && (
         <div className="raster" style={{ marginTop: 16 }}>
           {art === 'anzahlung' && (
@@ -548,13 +575,12 @@ function ZahlSchritt({ d, setD, bruttoCent }: SchrittProps & { bruttoCent: numbe
         </div>
       )}
       {rest > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <h3>Restbetrag {euro(rest)}</h3>
-          <Wahl optionen={RESTZAHLUNGEN.map((r) => [r, RESTZAHLUNG_NAMEN[r]])} wert={z.rest} aendern={(r) => setZ({ rest: r })} />
+        <div className="feld" style={{ marginTop: 16 }}>
+          Rest {euro(rest)} kommt
+          <Wahl optionen={RESTZAHLUNGEN.map((r) => [r, RESTZAHLUNG_NAMEN[r].toLowerCase()])} wert={z.rest} aendern={(r) => setZ({ rest: r })} />
         </div>
       )}
       {rest < 0 && <Meldung>Die Anzahlung ist höher als der Rechnungsbetrag.</Meldung>}
-      <p className="leise" style={{ marginTop: 12 }}>Bar- und EC-Zahlungen wie bisher an der Kasse buchen; die Bon-Nummer kann bei Restzahlungen erfasst werden.</p>
     </div>
   );
 }
@@ -566,8 +592,7 @@ function AbschlussSchritt({ d, setD, summen, children }: SchrittProps & { summen
   return (
     <>
       <div className="karte">
-        <h2>Übersicht</h2>
-        <p>
+        <p style={{ fontSize: 17 }}>
           <strong>{[d.kunde.anrede, d.kunde.name].filter(Boolean).join(' ') || <span className="fehlt">Kunde fehlt</span>}</strong>
           <br />
           {[d.kunde.strasse, `${d.kunde.plz} ${d.kunde.ort}`.trim()].filter(Boolean).join(', ')}
@@ -583,9 +608,9 @@ function AbschlussSchritt({ d, setD, summen, children }: SchrittProps & { summen
           {d.zahlung.anzahlungCent > 0 ? `Jetzt ${euro(d.zahlung.anzahlungCent)} (${d.zahlung.anzahlungMittel === 'ec' ? 'EC' : 'bar'})` : 'Jetzt keine Zahlung'}
           {summen.bruttoCent - d.zahlung.anzahlungCent > 0 && `, Rest ${euro(summen.bruttoCent - d.zahlung.anzahlungCent)} ${RESTZAHLUNG_NAMEN[d.zahlung.rest].toLowerCase()}`}
         </p>
-        <Feld titel="Bemerkung (erscheint auf der Rechnung)">
+        <Aufklapp titel="Bemerkung auf der Rechnung" offen={Boolean(d.bemerkung)}>
           <textarea value={d.bemerkung} onChange={(e) => setD({ ...d, bemerkung: e.target.value })} />
-        </Feld>
+        </Aufklapp>
       </div>
       <div className="karte">{children}</div>
     </>
