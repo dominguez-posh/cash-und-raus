@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ROLLEN } from '../../../shared/types.ts';
 import { emailSenden, graphKonfigLesen, graphKonfigSpeichern } from '../email.ts';
+import { altrechnungImportieren, altrechnungLesen } from '../import.ts';
 import { bereichPruefen, clientIp } from '../ip.ts';
 import {
   benutzerListe,
@@ -164,6 +165,46 @@ export function adminRouten(app: FastifyInstance): void {
   });
 
   app.get('/api/admin/protokoll', async (req) => protokollListe(mitRolle(req, 'admin').db));
+
+  // ---------- Import Altsystem ----------
+
+  app.post('/api/admin/import/altrechnungen', { bodyLimit: 20_000_000 }, async (req) => {
+    const k = mitRolle(req, 'admin');
+    const d = z
+      .object({
+        nurPruefen: z.boolean().default(false),
+        dateien: z.array(z.object({ name: z.string().trim().min(1).max(200), base64: z.string().max(4_000_000) })).min(1).max(20),
+      })
+      .parse(req.body);
+    const e = await einstellungenLesen(k.db);
+    const ergebnis = [];
+    for (const datei of d.dateien) {
+      try {
+        const a = altrechnungLesen(datei.name, Buffer.from(datei.base64, 'base64'), e);
+        if (d.nurPruefen) {
+          ergebnis.push({
+            datei: datei.name,
+            nummer: a.nummer,
+            status: 'geprueft',
+            filiale: a.filialeKuerzel,
+            datum: a.datum,
+            kunde: a.daten.kunde.name,
+            art: a.art,
+            zahlungsart: a.zahlungsart,
+            bruttoCent: a.bruttoCent,
+            anzahlungCent: a.daten.zahlung.anzahlungCent,
+            positionen: a.daten.positionen.length,
+            meldung: a.hinweise.join('; '),
+          });
+        } else {
+          ergebnis.push(await altrechnungImportieren(k.db, a, k.sitzung.email));
+        }
+      } catch (err) {
+        ergebnis.push({ datei: datei.name, nummer: '', status: 'fehler', meldung: (err as Error).message });
+      }
+    }
+    return ergebnis;
+  });
 
   // ---------- E-Mail (Microsoft Graph) ----------
 

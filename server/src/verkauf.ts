@@ -451,8 +451,9 @@ export async function pdfLesen(db: Kysely<MandantDB>, id: number, art: PdfArt, s
     let q = db.selectFrom('dokument').select('pdf').where('vorgang_id', '=', id).where('art', '=', art);
     if (art === 'quittung') q = q.where('zahlung_id', '=', zahlungId ?? -1);
     const d = await q.orderBy('id', 'desc').executeTakeFirst();
-    if (!d) throw new HttpFehler(404, 'Dokument nicht gefunden');
-    return { pdf: d.pdf, name: art === 'quittung' ? `${name}-${zahlungId}` : name };
+    if (d) return { pdf: d.pdf, name: art === 'quittung' ? `${name}-${zahlungId}` : name };
+    if (art === 'quittung') throw new HttpFehler(404, 'Dokument nicht gefunden');
+    // importierte Altrechnungen haben kein Archiv: aus den gespeicherten Daten erzeugen
   }
   if (v.art === 'storno' && art !== 'rechnung') throw new HttpFehler(404, 'Zum Storno gibt es nur die Stornorechnung.');
   return { pdf: await pdfErstellen(art, await druckDaten(db, id)), name };

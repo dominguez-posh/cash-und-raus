@@ -45,3 +45,6 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 - 2026-10-28: Stufe 3 Kasse: `shared/kasse.ts`, `server/src/kasse.ts`, `routen/kasse.ts`, `src/seiten/Kasse.tsx`.
   Wechselgeld je Filiale als Anfangsbestand; Soll = Wechselgeld + Barzahlungen (Verkauf) + Belege; Belege nur per
   Gegenbeleg korrigierbar; Abschluss je Filiale/Tag unveränderlich, sperrt weitere Belege. Migration 4.
+- 2026-10-28: Stufe 4 Import: `server/src/import.ts` liest die Altdateien (Blätter Daten/Rechnung, Zellen im Kopf
+  der Datei dokumentiert), Verwaltung → Import (prüfen, dann importieren). Importierte Vorgänge sind festgeschrieben
+  ohne PDF-Archiv (PDF wird live erzeugt), Nummernkreis zieht nach. Gegen die 5 echten Dateien geprüft (lokal).

@@ -4,7 +4,7 @@ import { ROLLEN, ROLLEN_NAMEN } from '../../shared/types.ts';
 import { api } from '../api.ts';
 import { datumZeit, Dialog, Feld, Meldung, useAktion, useLaden } from '../ui.tsx';
 
-type Reiter = 'firma' | 'filialen' | 'benutzer' | 'email' | 'protokoll';
+type Reiter = 'firma' | 'filialen' | 'benutzer' | 'email' | 'import' | 'protokoll';
 
 export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
   const [reiter, setReiter] = useState<Reiter>('firma');
@@ -13,6 +13,7 @@ export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
     ['filialen', 'Filialen'],
     ['benutzer', 'Benutzer'],
     ['email', 'E-Mail'],
+    ['import', 'Import'],
     ['protokoll', 'Protokoll'],
   ];
   return (
@@ -29,8 +30,94 @@ export function Admin({ neuLaden }: { neuLaden: () => Promise<void> }) {
       {reiter === 'filialen' && <Filialen neuLaden={neuLaden} />}
       {reiter === 'benutzer' && <BenutzerListe />}
       {reiter === 'email' && <EmailEinstellungen />}
+      {reiter === 'import' && <Import />}
       {reiter === 'protokoll' && <Protokoll pfad="/api/admin/protokoll" />}
     </>
+  );
+}
+
+// ---------- Import Altsystem ----------
+
+interface ImportZeile {
+  datei: string;
+  nummer: string;
+  status: 'geprueft' | 'importiert' | 'uebersprungen' | 'fehler';
+  meldung: string;
+  filiale?: string;
+  datum?: string;
+  kunde?: string;
+  bruttoCent?: number;
+  anzahlungCent?: number;
+  vorgangId?: number;
+}
+
+function Import() {
+  const [dateien, setDateien] = useState<File[]>([]);
+  const [zeilen, setZeilen] = useState<ImportZeile[]>([]);
+  const [geprueft, setGeprueft] = useState(false);
+  const a = useAktion();
+  const lesen = (f: File) =>
+    new Promise<string>((ok, fehler) => {
+      const r = new FileReader();
+      r.onload = () => ok(String(r.result).split(',')[1] ?? '');
+      r.onerror = () => fehler(new Error(`${f.name} konnte nicht gelesen werden`));
+      r.readAsDataURL(f);
+    });
+  const senden = (nurPruefen: boolean) =>
+    a.ausfuehren(async () => {
+      const ergebnis: ImportZeile[] = [];
+      for (let i = 0; i < dateien.length; i += 10) {
+        const teil = dateien.slice(i, i + 10);
+        const daten = await Promise.all(teil.map(async (f) => ({ name: f.name, base64: await lesen(f) })));
+        ergebnis.push(...(await api.post<ImportZeile[]>('/api/admin/import/altrechnungen', { nurPruefen, dateien: daten })));
+        setZeilen([...ergebnis]);
+      }
+      setGeprueft(nurPruefen);
+    });
+  const euroText = (c?: number) => (c === undefined ? '' : (c / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }));
+  return (
+    <div className="karte">
+      <h2>Altrechnungen importieren</h2>
+      <p className="leise">
+        Rechnungsdateien des Altsystems (eine <code>.xls</code> je Rechnung, z. B. <code>B-1-26.xls</code>). Die Filiale muss vorher mit demselben
+        Kürzel angelegt sein. Erst prüfen, dann importieren; bereits vorhandene Nummern werden übersprungen. Importierte Rechnungen sind
+        festgeschrieben, der Nummernkreis läuft hinter der höchsten importierten Nummer weiter.
+      </p>
+      <div className="knopfreihe" style={{ marginTop: 0 }}>
+        <label className="knopf">
+          Dateien wählen
+          <input type="file" accept=".xls" multiple hidden onChange={(ev) => { setDateien([...(ev.target.files ?? [])]); setZeilen([]); setGeprueft(false); }} />
+        </label>
+        <span className="leise">{dateien.length ? `${dateien.length} Datei(en)` : 'keine Dateien gewählt'}</span>
+        <button onClick={() => senden(true)} disabled={a.laeuft || !dateien.length}>Prüfen</button>
+        <button className="primaer" onClick={() => senden(false)} disabled={a.laeuft || !dateien.length || !geprueft}>Importieren</button>
+      </div>
+      <Meldung>{a.fehler}</Meldung>
+      {zeilen.length > 0 && (
+        <div className="tabelle-huelle" style={{ marginTop: 12 }}>
+          <table>
+            <thead><tr><th>Datei</th><th>Nummer</th><th>Filiale</th><th>Datum</th><th>Kunde</th><th className="zahl">Brutto</th><th className="zahl">Anzahlung</th><th>Status</th></tr></thead>
+            <tbody>
+              {zeilen.map((z) => (
+                <tr key={z.datei}>
+                  <td className="mono">{z.datei}</td>
+                  <td>{z.vorgangId ? <a href={`#/verkauf/${z.vorgangId}`}>{z.nummer}</a> : z.nummer}</td>
+                  <td>{z.filiale}</td>
+                  <td>{z.datum?.split('-').reverse().join('.')}</td>
+                  <td>{z.kunde}</td>
+                  <td className="zahl">{euroText(z.bruttoCent)}</td>
+                  <td className="zahl">{euroText(z.anzahlungCent)}</td>
+                  <td>
+                    <span className={`marker ${z.status === 'fehler' ? 'rot' : z.status === 'importiert' ? 'gruen' : ''}`}>{z.status}</span>
+                    {z.meldung && <div className="leise">{z.meldung}</div>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
