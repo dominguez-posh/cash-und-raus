@@ -1,5 +1,6 @@
 // PDFs: Rechnung (auch Storno), Lieferschein, Kommission, Quittung. Nur Standardschriften, keine externen Zugriffe.
 import pdfmake from 'pdfmake';
+import type { Tour } from '../../shared/dispo.ts';
 import { BELEG_ART_NAMEN, type Kassenabschluss, type Kassenbeleg, type Kassentag, MUENZEN, SCHEINE } from '../../shared/kasse.ts';
 import type { Einstellungen, Filiale } from '../../shared/types.ts';
 import {
@@ -427,4 +428,49 @@ export async function kassePdf(art: 'abschluss', d: Briefkopf & { abschluss: Kas
 export async function kassePdf(art: 'beleg' | 'abschluss', d: Briefkopf & Partial<{ beleg: Kassenbeleg; abschluss: Kassenabschluss; tag: Kassentag }>): Promise<Buffer> {
   if (art === 'beleg') return rendern(beleg(d as Briefkopf & { beleg: Kassenbeleg }), d.einstellungen, `Beleg ${d.beleg!.nummer}`);
   return rendern(abschluss(d as Briefkopf & { abschluss: Kassenabschluss; tag: Kassentag }), d.einstellungen, `Kassenabschluss ${d.abschluss!.datum}`);
+}
+
+// ---------- Tourenzettel ----------
+
+export async function tourPdf(d: Briefkopf & { tour: Tour }): Promise<Buffer> {
+  const t = d.tour;
+  const infos: [string, string][] = [
+    ['Tour', `Nr. ${t.id}`],
+    ['Tag', datumDeutsch(t.datum)],
+    ['Fahrzeug', t.fahrzeug?.name ?? '–'],
+    ['Fahrer', t.fahrer?.name ?? '–'],
+  ];
+  if (t.streckeKm !== null) infos.push(['Strecke', `${t.streckeKm} km, ca. ${t.dauerMin} min Fahrzeit`]);
+  const stopps = t.stopps.map((s, i) => {
+    const l = s.lieferung;
+    const angaben = [l.zeitfenster, etageText(l), l.montage ? `Montage ${l.montageMinuten} min` : '', l.hinweis].filter(Boolean).join(' · ');
+    return [
+      { text: String(i + 1), bold: true, fontSize: 12 },
+      {
+        stack: [
+          { text: `${s.kunde.name}`, bold: true },
+          `${s.kunde.strasse}, ${s.kunde.plz} ${s.kunde.ort}`,
+          s.kunde.telefon ? `Tel. ${s.kunde.telefon}` : '',
+          angaben ? { text: angaben, fontSize: 8.5, color: GRAU } : '',
+        ],
+      },
+      { stack: [{ text: s.nummer, bold: true }, ...s.positionen.map((p) => `${menge(p.menge)} × ${p.text}`)], fontSize: 9 },
+      { text: s.offenCent > 0 && s.lieferung.art === 'lieferung' ? `kassieren\n${euro(s.offenCent)}` : '', bold: true, alignment: 'right' },
+      { text: '\n\n_________', fontSize: 8, color: GRAU },
+    ];
+  });
+  return rendern(
+    [
+      ...kopf(d, 'Tourenzettel', infos, []),
+      t.bemerkung ? { text: t.bemerkung, margin: [0, 0, 0, 8] } : '',
+      {
+        table: { headerRows: 1, widths: [18, '*', 150, 60, 50], body: [['', 'Kunde', 'Ware', { text: 'Betrag', alignment: 'right' }, 'Erledigt'].map(fett), ...stopps] },
+        layout: LINIE,
+        fontSize: 9.5,
+      },
+      { text: 'Rückgabe Wagen: ____________  km-Stand: ____________  Unterschrift Fahrer: _____________________', fontSize: 9, margin: [0, 30, 0, 0] },
+    ],
+    d.einstellungen,
+    `Tour ${t.datum} ${t.id}`,
+  );
 }

@@ -310,6 +310,52 @@ export const mandantMigrationen: string[] = [
   CREATE TRIGGER lagerbuchung_kein_delete BEFORE DELETE ON lagerbuchung
     BEGIN SELECT RAISE(ABORT, 'Lagerbuchungen sind unveränderlich'); END;
   `,
+  // Stufe 6: Dispo und Touren
+  `
+  CREATE TABLE fahrzeug (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    kennzeichen TEXT NOT NULL DEFAULT '',
+    tracker_id TEXT NOT NULL DEFAULT '',
+    aktiv INTEGER NOT NULL DEFAULT 1
+  );
+  CREATE TABLE tour (
+    id INTEGER PRIMARY KEY,
+    datum TEXT NOT NULL,
+    fahrzeug_id INTEGER REFERENCES fahrzeug(id),
+    fahrer_benutzer_id INTEGER REFERENCES benutzer(id),
+    status TEXT NOT NULL CHECK (status IN ('geplant', 'unterwegs', 'fertig')),
+    bemerkung TEXT NOT NULL DEFAULT '',
+    strecke_km REAL,
+    dauer_min INTEGER,
+    erstellt_von TEXT NOT NULL,
+    erstellt_am TEXT NOT NULL
+  );
+  CREATE INDEX tour_datum ON tour(datum);
+  -- Lieferung/Abholung eines festgeschriebenen Vorgangs als Auftrag für die Dispo
+  CREATE TABLE lieferauftrag (
+    vorgang_id INTEGER PRIMARY KEY REFERENCES vorgang(id),
+    art TEXT NOT NULL CHECK (art IN ('lieferung', 'abholung')),
+    status TEXT NOT NULL CHECK (status IN ('offen', 'geplant', 'geliefert', 'storniert')),
+    datum TEXT,
+    tour_id INTEGER REFERENCES tour(id),
+    reihenfolge INTEGER,
+    lat REAL,
+    lng REAL,
+    geo_status TEXT NOT NULL DEFAULT 'offen' CHECK (geo_status IN ('offen', 'ok', 'fehler')),
+    geliefert_am TEXT,
+    geliefert_von TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX lieferauftrag_datum ON lieferauftrag(datum, status);
+  CREATE INDEX lieferauftrag_tour ON lieferauftrag(tour_id);
+  -- Geocoding-Zwischenspeicher (Adresse → Koordinaten), schont den externen Dienst
+  CREATE TABLE geo_cache (
+    adresse TEXT PRIMARY KEY,
+    lat REAL,
+    lng REAL,
+    zeit TEXT NOT NULL
+  );
+  `,
 ];
 
 export function migrieren(db: Database.Database, migrationen: string[]): void {

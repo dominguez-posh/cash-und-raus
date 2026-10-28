@@ -45,6 +45,7 @@ const EinstellungenDaten = z.object({
   lieferzeiten: z.array(text(40).min(1)).max(20),
   hinweise: z.array(z.object({ zeichen: z.string().trim().regex(/^\*{1,3}$/, 'Kennzeichen: *, ** oder ***'), text: text(500).min(1) })).max(3),
   belegGruende: z.array(text(60).min(1)).max(50),
+  lieferkosten: z.object({ grundCent: z.number().int().min(0).max(1_000_000), freiKm: z.number().min(0).max(1000), proKmCent: z.number().int().min(0).max(100_000) }),
 }).refine((e) => e.ustSaetze.includes(e.ustSatz), { message: 'Der Standardsatz muss unter den wählbaren USt-Sätzen sein', path: ['ustSatz'] });
 
 const FilialDaten = z.object({

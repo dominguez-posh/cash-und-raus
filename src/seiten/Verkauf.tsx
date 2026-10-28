@@ -451,6 +451,7 @@ function LieferSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkauf
               <div className="feld">
                 Lieferkosten
                 <Betrag cent={l.lieferkostenCent} aendern={(lieferkostenCent) => setL({ lieferkostenCent })} />
+                <Entfernung d={d} uebernehmen={(lieferkostenCent) => setL({ lieferkostenCent })} />
               </div>
               <div className="feld breit">
                 Montage
@@ -478,6 +479,30 @@ function LieferSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkauf
           </Feld>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Lieferkosten-Vorschlag aus der Fahrstrecke Filiale → Kunde */
+function Entfernung({ d, uebernehmen }: { d: VorgangDaten; uebernehmen: (cent: number) => void }) {
+  const [ergebnis, setErgebnis] = useState<{ km: number; minuten: number; vorschlagCent: number } | null>(null);
+  const a = useAktion();
+  const k = d.kunde;
+  return (
+    <div className="knopfreihe" style={{ marginTop: 6 }}>
+      <button
+        type="button"
+        disabled={a.laeuft || !k.strasse || !k.ort}
+        onClick={() => a.ausfuehren(async () => setErgebnis(await api.post('/api/dispo/entfernung', { strasse: k.strasse, plz: k.plz, ort: k.ort })))}
+      >
+        Nach Entfernung berechnen
+      </button>
+      {ergebnis && (
+        <span>
+          {ergebnis.km} km, ca. {ergebnis.minuten} min → <button type="button" className="link" onClick={() => uebernehmen(ergebnis.vorschlagCent)}>{euro(ergebnis.vorschlagCent)} übernehmen</button>
+        </span>
+      )}
+      <Meldung>{a.fehler}</Meldung>
     </div>
   );
 }

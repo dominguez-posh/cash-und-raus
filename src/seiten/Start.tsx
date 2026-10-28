@@ -1,12 +1,15 @@
 import type { Ich } from '../../shared/types.ts';
 import { Meldung } from '../ui.tsx';
+import { darfDispo } from './Dispo.tsx';
+import { darfFahren } from './Fahrer.tsx';
 import { darfKasse } from './Kasse.tsx';
 import { darfLager } from './Lager.tsx';
 import { darfVerkaufen } from './Verkauf.tsx';
 
-// Funktionen des Altsystems, die noch kommen (docs/PLAN.md).
+// Später (docs/PLAN.md, Stufe 7).
 const SPAETER: [string, string, string][] = [
-  ['Dispo & Touren', 'Lieferkalender, Touren auf der Karte', 'Stufe 6'],
+  ['GPS-Tracker', 'Live-Position der Wagen auf der Karte', 'Stufe 7'],
+  ['Kasse mit TSE', 'Eigene Kassenfunktion mit Cloud-TSE und DSFinV-K', 'Stufe 7'],
 ];
 
 export function Start({ ich }: { ich: Ich }) {
@@ -40,6 +43,18 @@ export function Start({ ich }: { ich: Ich }) {
           <a className="kachel knopf-kachel" href="#/lager">
             <h3>Lager</h3>
             <span className="leise">Bestand, Wareneingang, Umlagerung, Inventur</span>
+          </a>
+        )}
+        {darfDispo(ich) && (
+          <a className="kachel knopf-kachel" href="#/dispo">
+            <h3>Dispo</h3>
+            <span className="leise">Lieferungen heute, Touren auf der Karte, Tourenzettel</span>
+          </a>
+        )}
+        {darfFahren(ich) && !darfDispo(ich) && (
+          <a className="kachel knopf-kachel" href="#/tour">
+            <h3>Meine Tour</h3>
+            <span className="leise">Stopps, Navigation, Geliefert, Kassieren</span>
           </a>
         )}
       </div>

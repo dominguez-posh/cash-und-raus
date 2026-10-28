@@ -86,6 +86,8 @@ export interface Einstellungen {
   hinweise: { zeichen: string; text: string }[];
   /** Gründe für Kassenbelege (Auswahl) */
   belegGruende: string[];
+  /** Lieferkosten-Vorschlag nach Entfernung: Grundpreis, ab freiKm je angefangenem km Aufschlag */
+  lieferkosten: { grundCent: number; freiKm: number; proKmCent: number };
   hatLogo: boolean;
 }
 

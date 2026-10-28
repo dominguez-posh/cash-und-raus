@@ -522,6 +522,25 @@ function VerkaufEinstellungen({ werte, setE }: { werte: Einstellungen; setE: (e:
         </Feld>
       </div>
 
+      <h3 style={{ marginTop: 16 }}>Lieferkosten nach Entfernung (Vorschlag im Verkauf)</h3>
+      <div className="raster">
+        <Feld titel="Grundpreis (€)">
+          <input inputMode="decimal" value={(werte.lieferkosten.grundCent / 100).toFixed(2).replace('.', ',')} onChange={(ev) => {
+            const n = Number(ev.target.value.replace(/\./g, '').replace(',', '.'));
+            if (Number.isFinite(n)) setE({ ...werte, lieferkosten: { ...werte.lieferkosten, grundCent: Math.round(n * 100) } });
+          }} />
+        </Feld>
+        <Feld titel="Frei bis (km)">
+          <input type="number" min={0} value={werte.lieferkosten.freiKm} onChange={(ev) => setE({ ...werte, lieferkosten: { ...werte.lieferkosten, freiKm: Number(ev.target.value) } })} />
+        </Feld>
+        <Feld titel="Je weiterem km (€)">
+          <input inputMode="decimal" value={(werte.lieferkosten.proKmCent / 100).toFixed(2).replace('.', ',')} onChange={(ev) => {
+            const n = Number(ev.target.value.replace(/\./g, '').replace(',', '.'));
+            if (Number.isFinite(n)) setE({ ...werte, lieferkosten: { ...werte.lieferkosten, proKmCent: Math.round(n * 100) } });
+          }} />
+        </Feld>
+      </div>
+
       <h3 style={{ marginTop: 16 }}>Kasse: Gründe für Belege</h3>
       <Feld titel="Einer je Zeile (Auswahl beim Beleg)">
         <textarea value={gruende} onChange={(ev) => {

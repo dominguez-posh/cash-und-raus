@@ -3,7 +3,9 @@
 import type { Einstellungen, Rolle } from './types.ts';
 
 export const VERKAUF_ROLLEN: Rolle[] = ['admin', 'filialleitung', 'verkauf'];
-export const LESE_ROLLEN: Rolle[] = [...VERKAUF_ROLLEN, 'dispo', 'lager'];
+export const LESE_ROLLEN: Rolle[] = [...VERKAUF_ROLLEN, 'dispo', 'lager', 'fahrer'];
+/** Zahlungen zu Rechnungen erfassen (Fahrer: Zahlung bei Lieferung) */
+export const ZAHLUNG_ROLLEN: Rolle[] = [...VERKAUF_ROLLEN, 'fahrer'];
 export const STORNO_ROLLEN: Rolle[] = ['admin', 'filialleitung'];
 
 /** Was die Verkaufsmaske aus den Einstellungen braucht (auch ohne Admin-Rolle) */

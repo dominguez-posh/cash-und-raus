@@ -21,6 +21,7 @@ import {
 import type { MandantDB } from './db/schema.ts';
 import { einstellungenLesen, filialenListe, protokollieren } from './mandant.ts';
 import { pdfErstellen, type PdfArt } from './pdf.ts';
+import { lieferauftragAnlegen, lieferauftragStornieren } from './dispo.ts';
 import { verkaufBuchen } from './lager.ts';
 import { HttpFehler } from './sitzung.ts';
 
@@ -355,6 +356,7 @@ export async function festschreiben(db: Kysely<MandantDB>, id: number, k: { pers
         .execute();
     }
     await verkaufBuchen(tx, d.positionen, nummer, k.person, -1);
+    await lieferauftragAnlegen(tx, id, d);
     await dokumentAblegen(tx, id, 'rechnung', await pdfErstellen('rechnung', await druckDaten(tx, id)));
     await protokollieren(tx, k.person, 'Rechnung festgeschrieben', nummer, { id, bruttoCent: summen.bruttoCent, anzahlungCent: d.zahlung.anzahlungCent });
   });
@@ -440,6 +442,7 @@ export async function stornieren(
         .execute();
     }
     await verkaufBuchen(tx, v.positionen, nummer, k.person, 1);
+    await lieferauftragStornieren(tx, id);
     await dokumentAblegen(tx, r.id, 'rechnung', await pdfErstellen('rechnung', await druckDaten(tx, r.id)));
     await protokollieren(tx, k.person, 'Rechnung storniert', v.nummer ?? String(id), { storno: nummer, grund: s.grund, erstattetCent: v.bezahltCent, mittel: s.mittel });
     return r.id;

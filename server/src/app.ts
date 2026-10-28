@@ -11,6 +11,7 @@ import { samlRouten } from './auth/saml.ts';
 import { config } from './config.ts';
 import { adminRouten } from './routen/admin.ts';
 import { allgemeineRouten } from './routen/allgemein.ts';
+import { dispoRouten } from './routen/dispo.ts';
 import { kasseRouten } from './routen/kasse.ts';
 import { lagerRouten } from './routen/lager.ts';
 import { plattformRouten } from './routen/plattform.ts';
@@ -21,7 +22,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org",
   "connect-src 'self'",
   "font-src 'self'",
   "object-src 'none'",
@@ -77,6 +78,7 @@ export async function appBauen(opts: { logger?: boolean } = {}): Promise<Fastify
   verkaufRouten(app);
   kasseRouten(app);
   lagerRouten(app);
+  dispoRouten(app);
 
   if (fs.existsSync(config.webVerzeichnis)) {
     await app.register(fastifyStatic, { root: config.webVerzeichnis, index: false, wildcard: false });

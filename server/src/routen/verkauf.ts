@@ -2,7 +2,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Rolle } from '../../../shared/types.ts';
-import { LESE_ROLLEN, STORNO_ROLLEN, VERKAUF_ROLLEN, type VerkaufVorgaben, ZAHLMITTEL } from '../../../shared/verkauf.ts';
+import { LESE_ROLLEN, STORNO_ROLLEN, VERKAUF_ROLLEN, type VerkaufVorgaben, ZAHLMITTEL, ZAHLUNG_ROLLEN } from '../../../shared/verkauf.ts';
 import { emailSenden } from '../email.ts';
 import { lagerorteListe } from '../lager.ts';
 import { einstellungenLesen, protokollieren } from '../mandant.ts';
@@ -97,7 +97,7 @@ export function verkaufRouten(app: FastifyInstance): void {
   });
 
   app.post<{ Params: { id: string } }>('/api/vorgaenge/:id/zahlungen', async (req) => {
-    const k = kontext(req, VERKAUF_ROLLEN);
+    const k = kontext(req, ZAHLUNG_ROLLEN);
     const d = z
       .object({ betragCent: z.number().int().positive(), mittel: z.enum(ZAHLMITTEL), kassenBon: z.string().trim().max(40).default('') })
       .parse(req.body);

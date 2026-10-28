@@ -13,6 +13,7 @@ const web = path.join(ziel, 'public');
 function statischKopieren() {
   fs.mkdirSync(web, { recursive: true });
   fs.cpSync(path.join(wurzel, 'public'), web, { recursive: true });
+  fs.copyFileSync(path.join(wurzel, 'node_modules/leaflet/dist/leaflet.css'), path.join(web, 'leaflet.css'));
 }
 
 const webOptionen = (produktion) => ({

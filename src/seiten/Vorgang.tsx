@@ -15,6 +15,7 @@ import {
 } from '../../shared/verkauf.ts';
 import { api } from '../api.ts';
 import { datumZeit, Dialog, Feld, Meldung, speicherLesen, speicherSchreiben, useAktion, useLaden } from '../ui.tsx';
+import { ZAHLUNG_ROLLEN } from '../../shared/verkauf.ts';
 import { Betrag, darfStornieren, darfVerkaufen, Summentabelle, Wahl } from './Verkauf.tsx';
 
 const ZWECK = { anzahlung: 'Anzahlung', restzahlung: 'Restzahlung', erstattung: 'Erstattung' } as const;
@@ -57,7 +58,7 @@ export function VorgangAnsicht({ ich, vorgang: v, neuLaden }: { ich: Ich; vorgan
               <h3>Kommission</h3>
               <span className="leise">fürs Lager, mit Lagerorten</span>
             </a>
-            {offen && darfVerkaufen(ich) && (
+            {offen && ZAHLUNG_ROLLEN.some((r) => ich.rollen.includes(r)) && (
               <button className="kachel knopf-kachel primaer" onClick={() => setDialog('zahlung')}>
                 <h3>Zahlung erfassen</h3>
                 <span>offen {euro(v.offenCent)}</span>
@@ -153,7 +154,7 @@ export function VorgangAnsicht({ ich, vorgang: v, neuLaden }: { ich: Ich; vorgan
   );
 }
 
-function ZahlungDialog({ v, schliessen, fertig }: { v: Vorgang; schliessen: () => void; fertig: () => Promise<void> }) {
+export function ZahlungDialog({ v, schliessen, fertig }: { v: Vorgang; schliessen: () => void; fertig: () => Promise<void> }) {
   const [betragCent, setBetrag] = useState(v.offenCent);
   const [mittel, setMittel] = useState<Zahlmittel>('bar');
   const [kassenBon, setBon] = useState('');

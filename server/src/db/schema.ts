@@ -231,4 +231,42 @@ export interface MandantDB {
     text: string;
     person: string;
   };
+  fahrzeug: {
+    id: Generated<number>;
+    name: string;
+    kennzeichen: string;
+    tracker_id: string;
+    aktiv: number;
+  };
+  tour: {
+    id: Generated<number>;
+    datum: string;
+    fahrzeug_id: number | null;
+    fahrer_benutzer_id: number | null;
+    status: 'geplant' | 'unterwegs' | 'fertig';
+    bemerkung: string;
+    strecke_km: number | null;
+    dauer_min: number | null;
+    erstellt_von: string;
+    erstellt_am: string;
+  };
+  lieferauftrag: {
+    vorgang_id: number;
+    art: 'lieferung' | 'abholung';
+    status: 'offen' | 'geplant' | 'geliefert' | 'storniert';
+    datum: string | null;
+    tour_id: number | null;
+    reihenfolge: number | null;
+    lat: number | null;
+    lng: number | null;
+    geo_status: 'offen' | 'ok' | 'fehler';
+    geliefert_am: string | null;
+    geliefert_von: string;
+  };
+  geo_cache: {
+    adresse: string;
+    lat: number | null;
+    lng: number | null;
+    zeit: string;
+  };
 }

@@ -63,6 +63,17 @@ USt 7 %. Entfernungsaufschlag (ab 13 km 1,40 €/km) war geplant, ist im Code de
 | Positionen | Als JSON im Vorgang (unveränderlich per Trigger); in Stufe 5 um Artikel-ID ergänzen |
 | Kunden | Noch kein Kundenstamm: Vorschläge aus früheren Vorgängen; eigener Stamm später (DSGVO-Löschkonzept) |
 
+## Entscheidungen Stufen 3–6
+
+| Thema | Entscheidung |
+| --- | --- |
+| Kasse | Wechselgeld je Filiale als fester Anfangsbestand; Soll = Wechselgeld + Barzahlungen aus dem Verkauf + Belege; Belege nur per Gegenbeleg korrigierbar; Abschluss je Filiale und Tag unveränderlich und sperrt weitere Belege; Z-Bon-Nr. und -Barumsatz werden erfasst und abgeglichen (eigene TSE erst Stufe 7) |
+| Import | Eine `.xls` je Rechnung über die Verwaltung (prüfen, dann importieren); importierte Vorgänge sind festgeschrieben ohne PDF-Archiv (PDF wird aus den Daten erzeugt); Nummernkreis läuft hinter dem Import weiter; Sammeldateien (Tageskasse/EC) werden als ein Posten importiert |
+| Lager | Bestand = Summe unveränderlicher Lagerbuchungen, negativ möglich; Inventur setzt den Stand; Freitextpositionen buchen nicht; Lagerorte zentral oder je Filiale |
+| Dispo | Lieferauftrag entsteht beim Festschreiben (Lieferung/Abholung); Geocoding über Nominatim mit Zwischenspeicher (1 Anfrage/s), Routen über OSRM-Demo (`CR_GEOCODE_URL`, `CR_ROUTING_URL` austauschbar, für Dauerbetrieb eigener Dienst oder OpenRouteService empfohlen); Karte Leaflet + OSM-Kacheln; Fahrer markiert „geliefert“ und kassiert bei Lieferung |
+| Lieferkosten | Vorschlag = Grundpreis + je angefangenem km über der Freigrenze (Einstellungen), Verkäufer übernimmt per Klick |
+| Entra-Setup | Mandantenfähige Setup-App der Plattform; der Admin des Mandanten meldet sich an, die App legt die Unternehmensanwendung per Graph an |
+
 ## Architektur
 
 | Teil | Technik |
@@ -99,11 +110,11 @@ USt 7 %. Entfernungsaufschlag (ab 13 km 1,40 €/km) war geplant, ist im Code de
 ## Stufen
 
 1. **Grundgerüst**: Repo-Struktur, SAML-Login, lokaler Admin mit MFA, Plattform-/Mandanten-Admin, Filialen mit IP-Erkennung, Benutzer, Branding, Deployment.
-2. **Verkauf**: Vorgang mit allen Feldern des Altsystems, Anzahlung/Restzahlung, Storno, Rabatte, PDF (Rechnung, Lieferschein, Kommission), Drucken, E-Mail, Suche.
-3. **Kasse**: Belege, Tagesabschluss mit Zählprotokoll, Abgleich Z-Bon.
-4. **Import**: Altrechnungen aus `.xls`.
-5. **Artikel und Lager**: Bestand je Lagerort, Abbuchung beim Festschreiben, Umlagerung, Inventur.
-6. **Dispo und Touren**: Lieferkalender, Touren je Fahrzeug auf der Karte, Lieferkosten nach Entfernung, Tourenzettel.
+2. **Verkauf** (erledigt 2026-10-28): Vorgang mit allen Feldern des Altsystems, Anzahlung/Restzahlung, Storno, Rabatte, PDF (Rechnung, Lieferschein, Kommission), Drucken, E-Mail (2b), Suche.
+3. **Kasse** (erledigt): Belege, Tagesabschluss mit Zählprotokoll, Abgleich Z-Bon.
+4. **Import** (erledigt): Altrechnungen aus `.xls`.
+5. **Artikel und Lager** (erledigt): Bestand je Lagerort, Abbuchung beim Festschreiben, Umlagerung, Inventur.
+6. **Dispo und Touren** (erledigt): Lieferkalender, Touren je Fahrzeug auf der Karte, Lieferkosten nach Entfernung, Tourenzettel.
 7. **Später**: GPS-Tracker (z. B. Traccar), Live-Position, Tour als Navi-Link an Fahrer, Cloud-TSE (z. B. fiskaly) mit DSFinV-K-Export.
 
 ## Rechtliches im Blick behalten

@@ -216,3 +216,18 @@ table.summen tr.gesamt td { font-weight: 700; font-size: 17px; border-top: 1px s
   .treffer { grid-template-columns: 1fr auto; }
   .treffer > div:nth-child(2) { grid-column: 1; grid-row: 2; }
 }
+
+/* ---------- Dispo ---------- */
+.landkarte { height: 380px; border-radius: var(--radius); border: 1px solid var(--linie); margin-bottom: 16px; background: var(--flaeche-2); }
+.dispo-raster { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.stopp { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--linie); }
+.stopp.erledigt { opacity: .6; }
+.stopp-text { flex: 1; min-width: 0; }
+.stopp-text .marker { margin-left: 6px; }
+.stopp-nr { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--akzent); color: #fff; font-weight: 700; flex-shrink: 0; }
+.stopp-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+.stopp-knoepfe button, .stopp-knoepfe .knopf { min-height: 44px; }
+.stopp-marker span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 13px; border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 40%); }
+@media (max-width: 900px) {
+  .dispo-raster { grid-template-columns: 1fr; }
+}

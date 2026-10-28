@@ -31,6 +31,7 @@ export const STANDARD_EINSTELLUNGEN: Omit<Einstellungen, 'hatLogo'> = {
     },
   ],
   belegGruende: ['Einzahlung Bank', 'EC-Cash', 'Tanken', 'Einkauf Lager/Transport', 'Einkauf Büromaterial', 'Einkauf Putzmittel', 'Sonstiges'],
+  lieferkosten: { grundCent: 4900, freiKm: 13, proKmCent: 140 },
 };
 
 const jetzt = () => new Date().toISOString();

@@ -10,6 +10,8 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 | Gemeinsame Typen | `shared/types.ts` | von Server und Web-App verwendet |
 | Tests | `server/test/` | `node --test` mit `fastify.inject` |
 | Deployment | `deployment/`, `.github/workflows/` | Terraform, GitHub Actions (OIDC), Azure Container Apps |
+| Fachlogik | `server/src/verkauf.ts`, `kasse.ts`, `lager.ts`, `dispo.ts`, `import.ts`, `email.ts`, `pdf.ts` | je Bereich eine Datei; Routen in `server/src/routen/` |
+| Externe Dienste | `server/src/dispo.ts`, `email.ts`, `auth/entra.ts` | Nominatim/OSRM (konfigurierbar), Microsoft Graph |
 
 ## Regeln
 
@@ -56,3 +58,7 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 - 2026-10-28: Stufe 5 Artikel & Lager: `shared/lager.ts`, `server/src/lager.ts`, `routen/lager.ts`, `src/seiten/Lager.tsx`,
   Verwaltung → Artikel & Lager. Positionen tragen optional `artikelId`/`lagerortId`; Festschreiben bucht ab, Storno
   zurück; Bestand = Summe der unveränderlichen Lagerbuchungen (negativ möglich, Inventur setzt den Stand). Migration 5.
+- 2026-10-28: Stufe 6 Dispo & Touren: `shared/dispo.ts`, `server/src/dispo.ts`, `routen/dispo.ts`, `src/seiten/Dispo.tsx`
+  (Leaflet, OSM-Kacheln in der CSP), `Fahrer.tsx`. Lieferauftrag beim Festschreiben; Geocoding Nominatim (geo_cache),
+  Routing OSRM-Demo – beide über `CR_GEOCODE_URL`/`CR_ROUTING_URL` austauschbar. Migration 6. Alle Stufen 1–6 gebaut;
+  Stufe 7 (GPS, TSE) offen. Nicht im Browser/iPad durchgeklickt; Entra/Graph nicht gegen echte Tenants getestet.

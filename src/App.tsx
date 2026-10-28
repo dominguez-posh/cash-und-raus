@@ -4,6 +4,8 @@ import { api, ApiFehler, fehlerText } from './api.ts';
 import { Admin } from './seiten/Admin.tsx';
 import { Anmelden } from './seiten/Anmelden.tsx';
 import { FilialeWaehlen } from './seiten/FilialeWaehlen.tsx';
+import { darfDispo, Dispo } from './seiten/Dispo.tsx';
+import { darfFahren, Fahrer } from './seiten/Fahrer.tsx';
 import { darfKasse, Kasse } from './seiten/Kasse.tsx';
 import { Konto } from './seiten/Konto.tsx';
 import { darfLager, Lager } from './seiten/Lager.tsx';
@@ -73,6 +75,8 @@ export function App() {
   if (ich.mandant && ich.rollen.length) nav.push(['/suche', 'Suche']);
   if (ich.mandant && darfKasse(ich)) nav.push(['/kasse', 'Kasse']);
   if (ich.mandant && darfLager(ich)) nav.push(['/lager', 'Lager']);
+  if (ich.mandant && darfDispo(ich)) nav.push(['/dispo', 'Dispo']);
+  if (ich.mandant && darfFahren(ich)) nav.push(['/tour', 'Meine Tour']);
   if (ich.mandant && istAdmin) nav.push(['/admin', 'Verwaltung']);
   if (ich.plattformAdmin) nav.push(['/plattform', 'Plattform']);
   if (ich.art === 'lokal') nav.push(['/konto', 'Mein Konto']);
@@ -84,6 +88,8 @@ export function App() {
   else if (route === '/suche' && ich.mandant) seite = <Suche />;
   else if (route === '/kasse' && ich.mandant && darfKasse(ich)) seite = <Kasse ich={ich} />;
   else if (route === '/lager' && ich.mandant && darfLager(ich)) seite = <Lager />;
+  else if (route === '/dispo' && ich.mandant && darfDispo(ich)) seite = <Dispo />;
+  else if (route === '/tour' && ich.mandant && darfFahren(ich)) seite = <Fahrer />;
   else if (route === '/plattform' && ich.plattformAdmin) seite = <Plattform ich={ich} neuLaden={laden} />;
   else if (route === '/admin' && ich.mandant && istAdmin) seite = <Admin neuLaden={laden} mandantId={ich.mandant.id} />;
   else if (ich.mandant) seite = <Start ich={ich} />;
