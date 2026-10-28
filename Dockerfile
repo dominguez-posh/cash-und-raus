@@ -1,6 +1,9 @@
 # Cash & Raus: Web-App (dist/public) und Server-Bundle (dist/server.mjs).
-# Debian statt Alpine: better-sqlite3 bringt dafür fertige Binärdateien mit.
+# Debian statt Alpine (glibc). Build-Werkzeuge nur in der Build-Stufe, falls better-sqlite3 übersetzt werden muss.
 FROM node:24-bookworm-slim AS build
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-fund --no-audit
