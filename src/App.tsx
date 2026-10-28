@@ -6,6 +6,7 @@ import { Anmelden } from './seiten/Anmelden.tsx';
 import { FilialeWaehlen } from './seiten/FilialeWaehlen.tsx';
 import { darfKasse, Kasse } from './seiten/Kasse.tsx';
 import { Konto } from './seiten/Konto.tsx';
+import { darfLager, Lager } from './seiten/Lager.tsx';
 import { Mfa } from './seiten/Mfa.tsx';
 import { Plattform } from './seiten/Plattform.tsx';
 import { Start } from './seiten/Start.tsx';
@@ -71,6 +72,7 @@ export function App() {
   if (ich.mandant && darfVerkaufen(ich)) nav.push(['/verkauf/neu', 'Neuer Verkauf']);
   if (ich.mandant && ich.rollen.length) nav.push(['/suche', 'Suche']);
   if (ich.mandant && darfKasse(ich)) nav.push(['/kasse', 'Kasse']);
+  if (ich.mandant && darfLager(ich)) nav.push(['/lager', 'Lager']);
   if (ich.mandant && istAdmin) nav.push(['/admin', 'Verwaltung']);
   if (ich.plattformAdmin) nav.push(['/plattform', 'Plattform']);
   if (ich.art === 'lokal') nav.push(['/konto', 'Mein Konto']);
@@ -81,6 +83,7 @@ export function App() {
   else if (vorgangId && ich.mandant) seite = <VerkaufSeite key={`${route}:${besuch}`} ich={ich} id={vorgangId === 'neu' ? null : Number(vorgangId)} />;
   else if (route === '/suche' && ich.mandant) seite = <Suche />;
   else if (route === '/kasse' && ich.mandant && darfKasse(ich)) seite = <Kasse ich={ich} />;
+  else if (route === '/lager' && ich.mandant && darfLager(ich)) seite = <Lager />;
   else if (route === '/plattform' && ich.plattformAdmin) seite = <Plattform ich={ich} neuLaden={laden} />;
   else if (route === '/admin' && ich.mandant && istAdmin) seite = <Admin neuLaden={laden} mandantId={ich.mandant.id} />;
   else if (ich.mandant) seite = <Start ich={ich} />;

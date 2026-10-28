@@ -26,6 +26,7 @@ import {
   type Vorgang,
   type VorgangDaten,
 } from '../../shared/verkauf.ts';
+import type { Artikel } from '../../shared/lager.ts';
 import { api } from '../api.ts';
 import { Feld, Meldung, useAktion, useLaden } from '../ui.tsx';
 import { VorgangAnsicht } from './Vorgang.tsx';
@@ -296,9 +297,7 @@ function ArtikelSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkau
             )}
           </div>
           <div className="raster">
-            <Feld titel="Bezeichnung" breit>
-              <input value={p.text} onChange={(e) => setPos(i, { text: e.target.value })} placeholder="z. B. Kleiderschrank Eiche" />
-            </Feld>
+            <ArtikelFeld p={p} setP={(x) => setPos(i, x)} vorgaben={vorgaben} />
             <div className="feld">
               Menge
               <div className="menge">
@@ -317,9 +316,20 @@ function ArtikelSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkau
                 <Wahl optionen={vorgaben.ustSaetze.map((s) => [s, `${s} %`])} wert={p.ust} aendern={(ust) => setPos(i, { ust })} />
               </div>
             )}
-            <Feld titel="Lagerort (falls abweichend)">
-              <input value={p.lagerort} onChange={(e) => setPos(i, { lagerort: e.target.value })} />
-            </Feld>
+            {vorgaben.lagerorte.length ? (
+              <div className="feld">
+                Lagerort
+                <Wahl
+                  optionen={[[null, p.artikelId ? 'Standard' : '–'], ...vorgaben.lagerorte.map((l) => [l.id, l.name] as [number, string])]}
+                  wert={p.lagerortId ?? null}
+                  aendern={(id) => setPos(i, { lagerortId: id, lagerort: vorgaben.lagerorte.find((l) => l.id === id)?.name ?? '' })}
+                />
+              </div>
+            ) : (
+              <Feld titel="Lagerort (falls abweichend)">
+                <input value={p.lagerort} onChange={(e) => setPos(i, { lagerort: e.target.value })} />
+              </Feld>
+            )}
             {kennzeichen.length > 0 && (
               <div className="feld breit">
                 Hinweise
@@ -361,6 +371,49 @@ function ArtikelSchritt({ d, setD, vorgaben }: SchrittProps & { vorgaben: Verkau
         </div>
       )}
     </>
+  );
+}
+
+/** Bezeichnung mit Vorschlägen aus dem Artikelstamm; Auswahl übernimmt Preis, USt und Lagerort */
+function ArtikelFeld({ p, setP, vorgaben }: { p: VorgangDaten['positionen'][number]; setP: (x: Partial<VorgangDaten['positionen'][number]>) => void; vorgaben: VerkaufVorgaben }) {
+  const [vorschlaege, setVorschlaege] = useState<Artikel[]>([]);
+  const [offen, setOffen] = useState(false);
+  useEffect(() => {
+    if (!offen || p.text.trim().length < 2 || p.artikelId) return setVorschlaege([]);
+    const t = setTimeout(() => api.get<Artikel[]>(`/api/artikel?q=${encodeURIComponent(p.text)}`).then(setVorschlaege, () => {}), 200);
+    return () => clearTimeout(t);
+  }, [p.text, p.artikelId, offen]);
+  return (
+    <div className="feld breit">
+      Bezeichnung {p.artikelId && <span className="marker gruen">Artikelstamm</span>}
+      <input
+        value={p.text}
+        placeholder="z. B. Kleiderschrank Eiche"
+        onChange={(e) => {
+          setOffen(true);
+          setP({ text: e.target.value, artikelId: null });
+        }}
+        onBlur={() => setTimeout(() => setOffen(false), 150)}
+      />
+      {vorschlaege.length > 0 && (
+        <div className="vorschlaege">
+          {vorschlaege.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setP({ text: a.bezeichnung, preisCent: a.preisCent, ust: a.ust, artikelId: a.id, lagerortId: a.lagerortId, lagerort: vorgaben.lagerorte.find((l) => l.id === a.lagerortId)?.name ?? '' });
+                setVorschlaege([]);
+                setOffen(false);
+              }}
+            >
+              <strong>{a.bezeichnung}</strong> <span className="leise">{a.nummer} · {euro(a.preisCent)} · Bestand {a.bestand}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

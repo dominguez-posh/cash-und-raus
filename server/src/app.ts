@@ -12,6 +12,7 @@ import { config } from './config.ts';
 import { adminRouten } from './routen/admin.ts';
 import { allgemeineRouten } from './routen/allgemein.ts';
 import { kasseRouten } from './routen/kasse.ts';
+import { lagerRouten } from './routen/lager.ts';
 import { plattformRouten } from './routen/plattform.ts';
 import { verkaufRouten } from './routen/verkauf.ts';
 import { HttpFehler, kontextLaden } from './sitzung.ts';
@@ -75,6 +76,7 @@ export async function appBauen(opts: { logger?: boolean } = {}): Promise<Fastify
   plattformRouten(app);
   verkaufRouten(app);
   kasseRouten(app);
+  lagerRouten(app);
 
   if (fs.existsSync(config.webVerzeichnis)) {
     await app.register(fastifyStatic, { root: config.webVerzeichnis, index: false, wildcard: false });

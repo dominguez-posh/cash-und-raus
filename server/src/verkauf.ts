@@ -21,6 +21,7 @@ import {
 import type { MandantDB } from './db/schema.ts';
 import { einstellungenLesen, filialenListe, protokollieren } from './mandant.ts';
 import { pdfErstellen, type PdfArt } from './pdf.ts';
+import { verkaufBuchen } from './lager.ts';
 import { HttpFehler } from './sitzung.ts';
 
 type Db = Kysely<MandantDB> | Transaction<MandantDB>;
@@ -50,6 +51,8 @@ export const VorgangDatenSchema = z.object({
         ust: z.number().min(0).max(100),
         lagerort: text(60),
         kennzeichen: z.array(z.string().regex(/^\*{1,3}$/)).max(3),
+        artikelId: z.number().int().nullable().optional(),
+        lagerortId: z.number().int().nullable().optional(),
       }),
     )
     .max(50, 'Höchstens 50 Positionen'),
@@ -351,6 +354,7 @@ export async function festschreiben(db: Kysely<MandantDB>, id: number, k: { pers
         .values({ vorgang_id: id, zeit: jetzt(), betrag_cent: d.zahlung.anzahlungCent, mittel: d.zahlung.anzahlungMittel, zweck: 'anzahlung', kassen_bon: '', person: k.person })
         .execute();
     }
+    await verkaufBuchen(tx, d.positionen, nummer, k.person, -1);
     await dokumentAblegen(tx, id, 'rechnung', await pdfErstellen('rechnung', await druckDaten(tx, id)));
     await protokollieren(tx, k.person, 'Rechnung festgeschrieben', nummer, { id, bruttoCent: summen.bruttoCent, anzahlungCent: d.zahlung.anzahlungCent });
   });
@@ -435,6 +439,7 @@ export async function stornieren(
         .values({ vorgang_id: r.id, zeit, betrag_cent: -v.bezahltCent, mittel: s.mittel, zweck: 'erstattung', kassen_bon: '', person: k.person })
         .execute();
     }
+    await verkaufBuchen(tx, v.positionen, nummer, k.person, 1);
     await dokumentAblegen(tx, r.id, 'rechnung', await pdfErstellen('rechnung', await druckDaten(tx, r.id)));
     await protokollieren(tx, k.person, 'Rechnung storniert', v.nummer ?? String(id), { storno: nummer, grund: s.grund, erstattetCent: v.bezahltCent, mittel: s.mittel });
     return r.id;

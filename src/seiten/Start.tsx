@@ -1,11 +1,11 @@
 import type { Ich } from '../../shared/types.ts';
 import { Meldung } from '../ui.tsx';
 import { darfKasse } from './Kasse.tsx';
+import { darfLager } from './Lager.tsx';
 import { darfVerkaufen } from './Verkauf.tsx';
 
 // Funktionen des Altsystems, die noch kommen (docs/PLAN.md).
 const SPAETER: [string, string, string][] = [
-  ['Artikel & Lager', 'Bestand je Lagerort', 'Stufe 5'],
   ['Dispo & Touren', 'Lieferkalender, Touren auf der Karte', 'Stufe 6'],
 ];
 
@@ -34,6 +34,12 @@ export function Start({ ich }: { ich: Ich }) {
           <a className="kachel knopf-kachel" href="#/kasse">
             <h3>Kasse</h3>
             <span className="leise">Belege, Tagesabschluss mit Zählprotokoll und Z-Bon</span>
+          </a>
+        )}
+        {darfLager(ich) && (
+          <a className="kachel knopf-kachel" href="#/lager">
+            <h3>Lager</h3>
+            <span className="leise">Bestand, Wareneingang, Umlagerung, Inventur</span>
           </a>
         )}
       </div>

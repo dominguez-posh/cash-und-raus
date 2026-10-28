@@ -267,6 +267,49 @@ export const mandantMigrationen: string[] = [
   CREATE TRIGGER kassenabschluss_kein_delete BEFORE DELETE ON kassenabschluss
     BEGIN SELECT RAISE(ABORT, 'Kassenabschlüsse sind unveränderlich'); END;
   `,
+  // Stufe 5: Artikel und Lager
+  `
+  CREATE TABLE lagerort (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    filiale_id INTEGER REFERENCES filiale(id),
+    aktiv INTEGER NOT NULL DEFAULT 1
+  );
+  CREATE TABLE artikel (
+    id INTEGER PRIMARY KEY,
+    nummer TEXT NOT NULL DEFAULT '',
+    bezeichnung TEXT NOT NULL,
+    preis_cent INTEGER NOT NULL DEFAULT 0,
+    ust REAL NOT NULL,
+    lagerort_id INTEGER REFERENCES lagerort(id),
+    aktiv INTEGER NOT NULL DEFAULT 1,
+    suche TEXT NOT NULL DEFAULT ''
+  );
+  CREATE UNIQUE INDEX artikel_nummer ON artikel(nummer) WHERE nummer != '';
+  -- Bestand je Artikel und Lagerort (Summe der Buchungen)
+  CREATE TABLE bestand (
+    artikel_id INTEGER NOT NULL REFERENCES artikel(id),
+    lagerort_id INTEGER NOT NULL REFERENCES lagerort(id),
+    menge REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (artikel_id, lagerort_id)
+  );
+  CREATE TABLE lagerbuchung (
+    id INTEGER PRIMARY KEY,
+    zeit TEXT NOT NULL,
+    art TEXT NOT NULL CHECK (art IN ('wareneingang', 'verkauf', 'storno', 'umlagerung', 'inventur', 'korrektur')),
+    artikel_id INTEGER NOT NULL REFERENCES artikel(id),
+    lagerort_id INTEGER NOT NULL REFERENCES lagerort(id),
+    menge REAL NOT NULL,
+    bezug TEXT NOT NULL DEFAULT '',
+    text TEXT NOT NULL DEFAULT '',
+    person TEXT NOT NULL
+  );
+  CREATE INDEX lagerbuchung_artikel ON lagerbuchung(artikel_id, id);
+  CREATE TRIGGER lagerbuchung_kein_update BEFORE UPDATE ON lagerbuchung
+    BEGIN SELECT RAISE(ABORT, 'Lagerbuchungen sind unveränderlich'); END;
+  CREATE TRIGGER lagerbuchung_kein_delete BEFORE DELETE ON lagerbuchung
+    BEGIN SELECT RAISE(ABORT, 'Lagerbuchungen sind unveränderlich'); END;
+  `,
 ];
 
 export function migrieren(db: Database.Database, migrationen: string[]): void {

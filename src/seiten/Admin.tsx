@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import type { Artikel, Lagerort } from '../../shared/lager.ts';
 import type { Benutzer, Einstellungen, Filiale, GraphKonfig, ProtokollEintrag, Rolle } from '../../shared/types.ts';
 import { ROLLEN, ROLLEN_NAMEN } from '../../shared/types.ts';
 import { api } from '../api.ts';
 import { datumZeit, Dialog, Feld, hashParameter, Meldung, useAktion, useLaden } from '../ui.tsx';
 import { EntraVerbinden } from './Plattform.tsx';
 
-type Reiter = 'firma' | 'filialen' | 'benutzer' | 'anmeldung' | 'email' | 'import' | 'protokoll';
+type Reiter = 'firma' | 'filialen' | 'benutzer' | 'artikel' | 'anmeldung' | 'email' | 'import' | 'protokoll';
 
 export function Admin({ neuLaden, mandantId }: { neuLaden: () => Promise<void>; mandantId: string }) {
   const [reiter, setReiter] = useState<Reiter>(() => (location.hash.includes('entra=') ? 'anmeldung' : 'firma'));
@@ -13,6 +14,7 @@ export function Admin({ neuLaden, mandantId }: { neuLaden: () => Promise<void>; 
     ['firma', 'Firma & Logo'],
     ['filialen', 'Filialen'],
     ['benutzer', 'Benutzer'],
+    ['artikel', 'Artikel & Lager'],
     ['anmeldung', 'Anmeldung'],
     ['email', 'E-Mail'],
     ['import', 'Import'],
@@ -31,6 +33,7 @@ export function Admin({ neuLaden, mandantId }: { neuLaden: () => Promise<void>; 
       {reiter === 'firma' && <Firma neuLaden={neuLaden} />}
       {reiter === 'filialen' && <Filialen neuLaden={neuLaden} />}
       {reiter === 'benutzer' && <BenutzerListe />}
+      {reiter === 'artikel' && <ArtikelUndLager />}
       {reiter === 'anmeldung' && <Anmeldung mandantId={mandantId} />}
       {reiter === 'email' && <EmailEinstellungen />}
       {reiter === 'import' && <Import />}
@@ -121,6 +124,137 @@ function Import() {
         </div>
       )}
     </div>
+  );
+}
+
+// ---------- Artikel und Lagerorte ----------
+
+type ArtikelForm = Omit<Artikel, 'id' | 'bestand'> & { id?: number };
+const LEERER_ARTIKEL: ArtikelForm = { nummer: '', bezeichnung: '', preisCent: 0, ust: 7, lagerortId: null, aktiv: true };
+
+function ArtikelUndLager() {
+  const artikel = useLaden(() => api.get<Artikel[]>('/api/artikel?alle=1'));
+  const lagerorte = useLaden(() => api.get<Lagerort[]>('/api/lagerorte'));
+  const einst = useLaden(() => api.get<Einstellungen>('/api/admin/einstellungen'));
+  const filialen = useLaden(() => api.get<Filiale[]>('/api/admin/filialen'));
+  const [bearbeiten, setBearbeiten] = useState<ArtikelForm | null>(null);
+  const [lagerort, setLagerort] = useState<(Omit<Lagerort, 'id'> & { id?: number }) | null>(null);
+  const a = useAktion();
+  const lagerName = (id: number | null) => lagerorte.daten?.find((l) => l.id === id)?.name ?? '–';
+  const euroText = (c: number) => (c / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+  return (
+    <>
+      <div className="karte">
+        <div className="knopfreihe" style={{ marginTop: 0, justifyContent: 'space-between' }}>
+          <h2 style={{ margin: 0 }}>Lagerorte</h2>
+          <button className="primaer" onClick={() => setLagerort({ name: '', filialeId: null, aktiv: true })}>Neuer Lagerort</button>
+        </div>
+        <table>
+          <thead><tr><th>Name</th><th>Filiale</th><th>Status</th></tr></thead>
+          <tbody>
+            {lagerorte.daten?.map((l) => (
+              <tr key={l.id} className="klickbar" onClick={() => setLagerort(l)}>
+                <td>{l.name}</td>
+                <td>{filialen.daten?.find((f) => f.id === l.filialeId)?.kuerzel ?? 'zentral'}</td>
+                <td><span className={`marker ${l.aktiv ? 'gruen' : 'rot'}`}>{l.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
+              </tr>
+            ))}
+            {lagerorte.daten?.length === 0 && <tr><td colSpan={3} className="leise">Noch keine Lagerorte. Ohne Lagerort wird kein Bestand geführt.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="karte">
+        <div className="knopfreihe" style={{ marginTop: 0, justifyContent: 'space-between' }}>
+          <h2 style={{ margin: 0 }}>Artikel</h2>
+          <button className="primaer" onClick={() => setBearbeiten({ ...LEERER_ARTIKEL, ust: einst.daten?.ustSatz ?? 7 })}>Neuer Artikel</button>
+        </div>
+        <p className="leise">Im Verkauf erscheinen aktive Artikel als Vorschlag im Artikelfeld; beim Festschreiben wird vom Lagerort abgebucht.</p>
+        <Meldung>{artikel.fehler}</Meldung>
+        <div className="tabelle-huelle">
+          <table>
+            <thead><tr><th>Nr.</th><th>Bezeichnung</th><th className="zahl">Preis</th><th className="zahl">USt</th><th>Lagerort</th><th className="zahl">Bestand</th><th>Status</th></tr></thead>
+            <tbody>
+              {artikel.daten?.map((x) => (
+                <tr key={x.id} className="klickbar" onClick={() => setBearbeiten(x)}>
+                  <td className="mono">{x.nummer}</td>
+                  <td>{x.bezeichnung}</td>
+                  <td className="zahl">{euroText(x.preisCent)}</td>
+                  <td className="zahl">{x.ust} %</td>
+                  <td>{lagerName(x.lagerortId)}</td>
+                  <td className="zahl">{x.bestand}</td>
+                  <td><span className={`marker ${x.aktiv ? 'gruen' : 'rot'}`}>{x.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {lagerort && (
+        <Dialog titel={lagerort.id ? lagerort.name : 'Neuer Lagerort'} schliessen={() => setLagerort(null)}>
+          <div className="raster">
+            <Feld titel="Name"><input value={lagerort.name} onChange={(e) => setLagerort({ ...lagerort, name: e.target.value })} /></Feld>
+            <Feld titel="Filiale (leer = zentral)">
+              <select value={lagerort.filialeId ?? ''} onChange={(e) => setLagerort({ ...lagerort, filialeId: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">zentral</option>
+                {filialen.daten?.map((f) => <option key={f.id} value={f.id}>{f.kuerzel} {f.name}</option>)}
+              </select>
+            </Feld>
+            <label className="haken breit"><input type="checkbox" checked={lagerort.aktiv} onChange={(e) => setLagerort({ ...lagerort, aktiv: e.target.checked })} /> aktiv</label>
+          </div>
+          <Meldung>{a.fehler}</Meldung>
+          <div className="knopfreihe">
+            <button className="primaer" disabled={a.laeuft} onClick={() => a.ausfuehren(async () => {
+              const { id, ...rest } = lagerort;
+              if (id) await api.put(`/api/lagerorte/${id}`, rest);
+              else await api.post('/api/lagerorte', rest);
+              setLagerort(null);
+              lagerorte.neu();
+            })}>Speichern</button>
+            <button onClick={() => setLagerort(null)}>Abbrechen</button>
+          </div>
+        </Dialog>
+      )}
+
+      {bearbeiten && (
+        <Dialog titel={bearbeiten.id ? bearbeiten.bezeichnung : 'Neuer Artikel'} schliessen={() => setBearbeiten(null)}>
+          <div className="raster">
+            <Feld titel="Artikelnummer (optional)"><input value={bearbeiten.nummer} onChange={(e) => setBearbeiten({ ...bearbeiten, nummer: e.target.value })} className="mono" /></Feld>
+            <Feld titel="Bezeichnung" breit><input value={bearbeiten.bezeichnung} onChange={(e) => setBearbeiten({ ...bearbeiten, bezeichnung: e.target.value })} /></Feld>
+            <Feld titel="Preis brutto (€)">
+              <input inputMode="decimal" value={(bearbeiten.preisCent / 100).toFixed(2).replace('.', ',')} onChange={(e) => {
+                const n = Number(e.target.value.replace(/\./g, '').replace(',', '.'));
+                if (Number.isFinite(n)) setBearbeiten({ ...bearbeiten, preisCent: Math.round(n * 100) });
+              }} />
+            </Feld>
+            <Feld titel="USt">
+              <select value={bearbeiten.ust} onChange={(e) => setBearbeiten({ ...bearbeiten, ust: Number(e.target.value) })}>
+                {(einst.daten?.ustSaetze ?? [bearbeiten.ust]).map((s) => <option key={s} value={s}>{s} %</option>)}
+              </select>
+            </Feld>
+            <Feld titel="Standard-Lagerort">
+              <select value={bearbeiten.lagerortId ?? ''} onChange={(e) => setBearbeiten({ ...bearbeiten, lagerortId: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">kein Bestand</option>
+                {lagerorte.daten?.filter((l) => l.aktiv).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </Feld>
+            <label className="haken breit"><input type="checkbox" checked={bearbeiten.aktiv} onChange={(e) => setBearbeiten({ ...bearbeiten, aktiv: e.target.checked })} /> aktiv (im Verkauf wählbar)</label>
+          </div>
+          <Meldung>{a.fehler}</Meldung>
+          <div className="knopfreihe">
+            <button className="primaer" disabled={a.laeuft} onClick={() => a.ausfuehren(async () => {
+              const { id, ...rest } = bearbeiten;
+              if (id) await api.put(`/api/artikel/${id}`, rest);
+              else await api.post('/api/artikel', rest);
+              setBearbeiten(null);
+              artikel.neu();
+            })}>Speichern</button>
+            <button onClick={() => setBearbeiten(null)}>Abbrechen</button>
+          </div>
+        </Dialog>
+      )}
+    </>
   );
 }
 

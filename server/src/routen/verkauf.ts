@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { Rolle } from '../../../shared/types.ts';
 import { LESE_ROLLEN, STORNO_ROLLEN, VERKAUF_ROLLEN, type VerkaufVorgaben, ZAHLMITTEL } from '../../../shared/verkauf.ts';
 import { emailSenden } from '../email.ts';
+import { lagerorteListe } from '../lager.ts';
 import { einstellungenLesen, protokollieren } from '../mandant.ts';
 import { PDF_ARTEN, type PdfArt } from '../pdf.ts';
 import { HttpFehler, mitRolle } from '../sitzung.ts';
@@ -45,6 +46,7 @@ export function verkaufRouten(app: FastifyInstance): void {
       hinweise: e.hinweise,
       belegGruende: e.belegGruende,
       orte: k.filialen.map((f) => `Filiale ${f.name}`),
+      lagerorte: (await lagerorteListe(k.db)).filter((l) => l.aktiv).map((l) => ({ id: l.id, name: l.name })),
     };
   });
 

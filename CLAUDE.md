@@ -53,3 +53,6 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
   ohne PDF-Archiv (PDF wird live erzeugt), Nummernkreis zieht nach. Gegen die 5 echten Dateien geprüft (lokal).
 - 2026-10-28: Entra-Einrichtung mit einem Klick (Unternehmensanwendung per Graph anlegen: Entity-ID/ACS, SAML-Modus,
   Signaturzertifikat, Domänen; wiederholbar). Noch nicht gegen ein echtes Entra getestet.
+- 2026-10-28: Stufe 5 Artikel & Lager: `shared/lager.ts`, `server/src/lager.ts`, `routen/lager.ts`, `src/seiten/Lager.tsx`,
+  Verwaltung → Artikel & Lager. Positionen tragen optional `artikelId`/`lagerortId`; Festschreiben bucht ab, Storno
+  zurück; Bestand = Summe der unveränderlichen Lagerbuchungen (negativ möglich, Inventur setzt den Stand). Migration 5.

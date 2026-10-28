@@ -10,6 +10,8 @@ export const STORNO_ROLLEN: Rolle[] = ['admin', 'filialleitung'];
 export type VerkaufVorgaben = Pick<Einstellungen, 'ustSatz' | 'ustSaetze' | 'rabattarten' | 'lieferzeiten' | 'hinweise' | 'belegGruende'> & {
   /** Filialen als Vorschlag für „Abholung aus / Ausliefern von“ */
   orte: string[];
+  /** Aktive Lagerorte (Stufe 5) */
+  lagerorte: { id: number; name: string }[];
 };
 
 export const ANREDEN = ['', 'Herr', 'Frau', 'Herr und Frau', 'Familie', 'Firma'] as const;
@@ -63,6 +65,9 @@ export interface Position {
   lagerort: string;
   /** Kennzeichen für Hinweistexte, z. B. '*' oder '**' (Einstellungen → Hinweise) */
   kennzeichen: string[];
+  /** Artikel aus dem Stamm (Stufe 5); fehlt/null = Freitext ohne Lagerbuchung */
+  artikelId?: number | null;
+  lagerortId?: number | null;
 }
 
 export interface Rabatt {
@@ -175,7 +180,7 @@ export interface VorgangKurz {
 
 export const LEERE_ANSCHRIFT: Anschrift = { anrede: '', name: '', zusatz: '', strasse: '', plz: '', ort: '' };
 
-export const leerePosition = (ust: number): Position => ({ menge: 1, text: '', preisCent: 0, ust, lagerort: '', kennzeichen: [] });
+export const leerePosition = (ust: number): Position => ({ menge: 1, text: '', preisCent: 0, ust, lagerort: '', kennzeichen: [], artikelId: null, lagerortId: null });
 
 export const leererVorgang = (ust: number): VorgangDaten => ({
   kunde: { ...LEERE_ANSCHRIFT, telefon: '', email: '' },

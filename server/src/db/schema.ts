@@ -199,4 +199,36 @@ export interface MandantDB {
     uebernommen_von: string;
     person: string;
   };
+  lagerort: {
+    id: Generated<number>;
+    name: string;
+    filiale_id: number | null;
+    aktiv: number;
+  };
+  artikel: {
+    id: Generated<number>;
+    nummer: string;
+    bezeichnung: string;
+    preis_cent: number;
+    ust: number;
+    lagerort_id: number | null;
+    aktiv: number;
+    suche: string;
+  };
+  bestand: {
+    artikel_id: number;
+    lagerort_id: number;
+    menge: number;
+  };
+  lagerbuchung: {
+    id: Generated<number>;
+    zeit: string;
+    art: 'wareneingang' | 'verkauf' | 'storno' | 'umlagerung' | 'inventur' | 'korrektur';
+    artikel_id: number;
+    lagerort_id: number;
+    menge: number;
+    bezug: string;
+    text: string;
+    person: string;
+  };
 }
