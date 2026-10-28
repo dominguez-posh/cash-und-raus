@@ -1,0 +1,12 @@
+node_modules
+dist
+data
+Backup-C-Start
+altdaten
+deployment
+docs
+.git
+.github
+.env
+.env.*
+*.md

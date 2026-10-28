@@ -1,0 +1,31 @@
+# Altsystem mit echten Kunden- und Mitarbeiterdaten: nie committen
+Backup-C-Start/
+altdaten/
+
+# Lokale Daten und Konfiguration
+data/
+*.sqlite
+*.sqlite-*
+*.db
+.env
+.env.*
+!.env.example
+uploads/
+
+# Build und Abhängigkeiten
+node_modules/
+dist/
+coverage/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+*.auto.tfvars
+
+# Editor/OS
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db

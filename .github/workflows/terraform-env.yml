@@ -1,0 +1,52 @@
+# Rollt eine Umgebung mit deployment/envs/<environment>.tfvars aus (Azure-Anmeldung per OIDC).
+name: Umgebung ausrollen
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      image_tag:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    name: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: env-${{ inputs.environment }}
+      cancel-in-progress: false
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.out.outputs.url }}
+    defaults:
+      run:
+        working-directory: deployment
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_admin_password: ${{ secrets.CR_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.1
+          terraform_wrapper: false
+      - name: terraform init
+        run: terraform init -input=false -backend-config=backend.hcl -backend-config="key=${{ inputs.environment }}.tfstate"
+      - name: terraform apply
+        run: terraform apply -input=false -auto-approve -var-file="envs/${{ inputs.environment }}.tfvars" -var="image_tag=${{ inputs.image_tag }}"
+      - id: out
+        name: Adresse
+        run: |
+          url=$(terraform output -raw url)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### Adresse: $url" >> "$GITHUB_STEP_SUMMARY"

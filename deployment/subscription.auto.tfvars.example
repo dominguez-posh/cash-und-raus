@@ -1,0 +1,2 @@
+# Nur für lokale Ausführung: kopieren nach subscription.auto.tfvars (wird nicht eingecheckt).
+subscription_id = "00000000-0000-0000-0000-000000000000"
