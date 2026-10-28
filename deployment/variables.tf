@@ -60,19 +60,6 @@ variable "product_name" {
   default     = "Cash & Raus"
 }
 
-variable "admin_user" {
-  description = "Benutzername des ersten lokalen Admin-Kontos (wird nur angelegt, solange es noch kein lokales Konto gibt)."
-  type        = string
-  default     = "notfall"
-}
-
-variable "admin_password" {
-  description = "Startpasswort des ersten lokalen Admin-Kontos (mind. 12 Zeichen). Kommt aus dem GitHub-Secret CR_ADMIN_PASSWORD."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
 variable "cpu" {
   description = "vCPU (0.25, 0.5, 0.75 oder 1)."
   type        = number

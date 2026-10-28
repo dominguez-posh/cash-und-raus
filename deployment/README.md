@@ -33,20 +33,20 @@ Der State des Bootstraps bleibt lokal (`bootstrap/terraform.tfstate`, nicht eing
 
 1. **Secrets** (Settings → Secrets and variables → Actions → Repository secrets):
    - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` aus `terraform output github_secrets`
-   - `CR_ADMIN_PASSWORD`: Startpasswort des Notfallkontos `notfall` (mind. 12 Zeichen, Buchstaben + Ziffern/Sonderzeichen)
 2. **Environment** `prod` (Settings → Environments): optional „Required reviewers“ setzen, dann wartet jedes Ausrollen auf Freigabe.
 3. Nach dem ersten Lauf: **Packages → cash-und-raus → Package settings**: Sichtbarkeit *public*, damit die Container App das Image
    ohne Anmeldung ziehen kann (wie bei hrdnr).
 
 ## Erster Start
 
-1. Adresse aus dem Workflow (Zusammenfassung) öffnen → „Admin- / Notfallzugang“ → `notfall` + Startpasswort.
+1. Adresse aus dem Workflow (Zusammenfassung) öffnen. Solange es kein Admin-Konto gibt, zeigt die Seite die
+   **Ersteinrichtung**: Benutzername, Name und Passwort festlegen. Wer die App zuerst öffnet, legt das Konto an –
+   deshalb direkt nach dem ersten Ausrollen erledigen. Danach ist die Ersteinrichtung dauerhaft geschlossen.
 2. Zweiten Faktor einrichten (Authenticator-App oder Passkey), Wiederherstellungscodes sicher ablegen.
-3. Mein Konto → Passwort ändern. Das Secret `CR_ADMIN_PASSWORD` wird danach nicht mehr verwendet
-   (das Konto wird nur angelegt, solange es noch kein lokales Konto gibt).
-4. Plattform → Neuer Mandant (Kennung, Name, erster Admin mit Firmen-E-Mail).
-5. Mandant → Einstellungen: Entity-ID und ACS-URL in Entra eintragen (siehe unten), Metadaten-URL zurück übernehmen,
+3. Plattform → Neuer Mandant (Kennung, Name, erster Admin mit Firmen-E-Mail).
+4. Mandant → Einstellungen: Entity-ID und ACS-URL in Entra eintragen (siehe unten), Metadaten-URL zurück übernehmen,
    E-Mail-Domäne eintragen, „Firmenanmeldung aktiv“.
+5. Plattform → Lokale Konten: zweites Notfallkonto anlegen (falls das erste ausfällt).
 
 ## Entra: SAML-Unternehmensanwendung je Mandant
 

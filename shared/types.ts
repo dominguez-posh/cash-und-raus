@@ -119,4 +119,6 @@ export interface Ich {
 
 export interface AuthInfo {
   produktName: string;
+  /** Noch kein Admin-Konto: die Anmeldeseite zeigt die Ersteinrichtung */
+  einrichtung: boolean;
 }

@@ -12,7 +12,7 @@ import { Meldung, useRoute } from './ui.tsx';
 
 export function App() {
   const [ich, setIch] = useState<Ich | null | undefined>(undefined);
-  const [info, setInfo] = useState<AuthInfo>({ produktName: 'Cash & Raus' });
+  const [info, setInfo] = useState<AuthInfo>({ produktName: 'Cash & Raus', einrichtung: false });
   const [fehler, setFehler] = useState<string | null>(null);
   const [filialWahl, setFilialWahl] = useState(false);
   const route = useRoute();

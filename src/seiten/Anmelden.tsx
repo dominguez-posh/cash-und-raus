@@ -5,7 +5,62 @@ import { Feld, Meldung, speicherLesen, speicherSchreiben, useAktion } from '../u
 
 const EMAIL_SCHLUESSEL = 'cr.email';
 
+/** Erstes Öffnen: Admin-Konto anlegen, danach folgt die Einrichtung des zweiten Faktors. */
+function Ersteinrichtung({ info }: { info: AuthInfo }) {
+  const [benutzername, setBenutzername] = useState('');
+  const [name, setName] = useState('');
+  const [passwort, setPasswort] = useState('');
+  const [wiederholung, setWiederholung] = useState('');
+  const a = useAktion();
+  const anlegen = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwort !== wiederholung) {
+      a.setFehler('Die Passwörter stimmen nicht überein.');
+      return;
+    }
+    void a.ausfuehren(async () => {
+      await api.post('/api/auth/einrichtung', { benutzername, name, passwort });
+      location.replace('/');
+    });
+  };
+  return (
+    <div className="anmelde-huelle">
+      <div className="karte anmelde-karte">
+        <div className="titel">
+          <img src="/favicon.svg" alt="" />
+          <h1>{info.produktName}</h1>
+        </div>
+        <h2>Ersteinrichtung</h2>
+        <p className="leise">
+          Legen Sie das Admin-Konto an (Plattform-Administration und Notfallzugang). Danach richten Sie den zweiten Faktor ein.
+        </p>
+        <form className="stapel" onSubmit={anlegen}>
+          <Feld titel="Benutzername">
+            <input autoComplete="username" required value={benutzername} onChange={(e) => setBenutzername(e.target.value)} autoFocus />
+          </Feld>
+          <Feld titel="Name">
+            <input autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
+          </Feld>
+          <Feld titel="Passwort (mind. 12 Zeichen)">
+            <input type="password" autoComplete="new-password" required minLength={12} value={passwort} onChange={(e) => setPasswort(e.target.value)} />
+          </Feld>
+          <Feld titel="Passwort wiederholen">
+            <input type="password" autoComplete="new-password" required value={wiederholung} onChange={(e) => setWiederholung(e.target.value)} />
+          </Feld>
+          <Meldung>{a.fehler}</Meldung>
+          <button className="primaer" disabled={a.laeuft}>Konto anlegen</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function Anmelden({ info }: { info: AuthInfo }) {
+  if (info.einrichtung) return <Ersteinrichtung info={info} />;
+  return <Login info={info} />;
+}
+
+function Login({ info }: { info: AuthInfo }) {
   const [email, setEmail] = useState(() => speicherLesen(EMAIL_SCHLUESSEL));
   const [lokal, setLokal] = useState(false);
   const [benutzername, setBenutzername] = useState('');

@@ -1,6 +1,7 @@
 // Lokale Konten (Plattform-Admin, Notfallzugang): Passwort, danach zwingend TOTP oder Passkey.
 // Ohne hinterlegten Faktor muss er direkt nach dem Passwort eingerichtet werden.
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { sql } from 'kysely';
 import { z } from 'zod';
 import type { LokalesKonto } from '../../../shared/types.ts';
 import { config } from '../config.ts';
@@ -110,33 +111,41 @@ async function anmeldungAbschliessen(k: Kontext, konto: NonNullable<KontoZeile>,
   await plattformProtokollieren(konto.benutzername, 'Anmeldung lokal', konto.benutzername, { zweiterFaktor: wie });
 }
 
-/** Legt beim Start das erste lokale Konto aus CR_ADMIN_USER / CR_ADMIN_PASSWORD an, solange es keines gibt. */
-export async function startAdminAnlegen(log: (msg: string) => void): Promise<void> {
-  const p = plattformDb();
-  const vorhanden = await p.selectFrom('lokales_konto').select('benutzername').limit(1).executeTakeFirst();
-  if (vorhanden) return;
-  const { benutzername, passwort } = config.startAdmin;
-  if (!benutzername || !passwort) {
-    log('Kein lokales Konto vorhanden: CR_ADMIN_USER und CR_ADMIN_PASSWORD setzen, um das erste Admin-Konto anzulegen.');
-    return;
-  }
-  const problem = passwortProblem(passwort);
-  if (problem) {
-    log(`CR_ADMIN_PASSWORD ungeeignet: ${problem}`);
-    return;
-  }
-  await p
-    .insertInto('lokales_konto')
-    .values({ benutzername, name: benutzername, passwort_hash: passwortHash(passwort), erstellt_am: jetzt(), aktiv: 1, totp_zaehler: -1, recovery_hashes: '[]', passkeys: '[]', totp_secret: null, letzte_anmeldung: null })
-    .execute();
-  await plattformProtokollieren('System', 'Lokales Konto angelegt', benutzername, 'aus CR_ADMIN_USER');
-  log(`Lokales Admin-Konto „${benutzername}“ angelegt. Beim ersten Login wird TOTP oder Passkey eingerichtet.`);
+/** Ersteinrichtung offen: es gibt noch kein lokales Konto. */
+export async function einrichtungOffen(): Promise<boolean> {
+  return !(await plattformDb().selectFrom('lokales_konto').select('benutzername').limit(1).executeTakeFirst());
 }
 
 const AnmeldeDaten = z.object({ benutzername: z.string().min(1).max(100), passwort: z.string().min(1).max(256) });
 const Code = z.object({ code: z.string().min(1).max(20) });
+const Benutzername = z.string().trim().regex(/^[A-Za-z0-9._@-]{3,100}$/, 'Benutzername: 3–100 Zeichen, Buchstaben, Ziffern, . _ @ -');
 
 export function lokaleRouten(app: FastifyInstance): void {
+  // Ersteinrichtung: das erste Admin-Konto legt die Person an, die die App zuerst öffnet.
+  // Danach ist der Weg dauerhaft geschlossen; weitere Konten nur über Plattform → Lokale Konten.
+  app.post('/api/auth/einrichtung', async (req, reply) => {
+    const d = z.object({ benutzername: Benutzername, name: z.string().trim().min(1).max(100), passwort: z.string() }).parse(req.body);
+    const problem = passwortProblem(d.passwort);
+    if (problem) throw new HttpFehler(400, problem);
+    // Prüfen und Anlegen in einer Anweisung: zwei gleichzeitige Anfragen können nicht beide ein Konto anlegen.
+    const r = await sql`
+      INSERT INTO lokales_konto (benutzername, name, passwort_hash, erstellt_am)
+      SELECT ${d.benutzername}, ${d.name}, ${passwortHash(d.passwort)}, ${jetzt()}
+      WHERE NOT EXISTS (SELECT 1 FROM lokales_konto)`.execute(plattformDb());
+    if (!r.numAffectedRows) throw new HttpFehler(409, 'Die Ersteinrichtung ist bereits abgeschlossen.');
+    await plattformProtokollieren(d.benutzername, 'Ersteinrichtung: Admin-Konto angelegt', d.benutzername, { ip: clientIp(req) });
+    await anmelden(req, reply, {
+      art: 'lokal',
+      email: d.benutzername,
+      name: d.name,
+      plattformAdmin: true,
+      mfaOffen: true,
+      mandantId: null,
+      benutzerId: null,
+    });
+    return { ok: true };
+  });
+
   app.post('/api/auth/lokal', async (req, reply) => {
     const ip = clientIp(req);
     const warten = bremse.gesperrt(ip);
@@ -340,7 +349,7 @@ export function lokaleRouten(app: FastifyInstance): void {
   app.post('/api/plattform/konten', async (req) => {
     const k = plattform(req);
     const d = z
-      .object({ benutzername: z.string().trim().regex(/^[A-Za-z0-9._@-]{3,100}$/, 'Benutzername: 3–100 Zeichen, Buchstaben, Ziffern, . _ @ -'), name: z.string().trim().min(1).max(100), passwort: z.string() })
+      .object({ benutzername: Benutzername, name: z.string().trim().min(1).max(100), passwort: z.string() })
       .parse(req.body);
     const problem = passwortProblem(d.passwort);
     if (problem) throw new HttpFehler(400, problem);

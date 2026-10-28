@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AuthInfo } from '../../../shared/types.ts';
+import { einrichtungOffen } from '../auth/lokal.ts';
 import { config } from '../config.ts';
 import { logoLesen, protokollieren } from '../mandant.ts';
 import { abmelden, HttpFehler, ichAus, imMandant, mitSitzung, sitzungAendern } from '../sitzung.ts';
 
 export function allgemeineRouten(app: FastifyInstance): void {
-  app.get('/api/auth/info', async (): Promise<AuthInfo> => ({ produktName: config.produktName }));
+  app.get('/api/auth/info', async (): Promise<AuthInfo> => ({ produktName: config.produktName, einrichtung: await einrichtungOffen() }));
 
   app.post('/api/auth/abmelden', async (req, reply) => {
     await abmelden(req, reply);

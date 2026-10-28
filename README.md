@@ -7,11 +7,10 @@ Web-App für Verkauf, Lieferung, Lager und Kasse in Filialbetrieben – mandante
 
 ```powershell
 npm install
-$env:CR_ADMIN_USER = "notfall"; $env:CR_ADMIN_PASSWORD = "ein-langes-passwort-1"
 npm run dev        # http://localhost:3000
 ```
 
-Anmeldung über „Admin- / Notfallzugang“; beim ersten Login wird der zweite Faktor eingerichtet.
+Beim ersten Öffnen legt die Ersteinrichtung das Admin-Konto an; danach wird der zweite Faktor eingerichtet.
 Daten liegen unter `data/` (nicht eingecheckt).
 
 | Befehl | Zweck |

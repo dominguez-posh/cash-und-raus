@@ -8,11 +8,8 @@ import { after, before, test } from 'node:test';
 const daten = fs.mkdtempSync(path.join(os.tmpdir(), 'cr-test-'));
 process.env.CR_DATA_DIR = daten;
 process.env.CR_WEB_DIR = path.join(daten, 'kein-web');
-process.env.CR_ADMIN_USER = 'notfall';
-process.env.CR_ADMIN_PASSWORD = 'Test-Passwort-123';
 
 const { appBauen } = await import('../src/app.ts');
-const { startAdminAnlegen } = await import('../src/auth/lokal.ts');
 const { totpAt, totpCounter } = await import('../src/auth/totp.ts');
 const { alleSchliessen, mandantDb } = await import('../src/db/index.ts');
 const { ipInBereichen, bereichPruefen } = await import('../src/ip.ts');
@@ -36,7 +33,6 @@ async function rufe(methode: 'GET' | 'POST' | 'PUT', url: string, body?: unknown
 
 before(async () => {
   app = await appBauen({ logger: false });
-  await startAdminAnlegen(() => {});
 });
 
 after(async () => {
@@ -72,6 +68,20 @@ test('ohne Anmeldung kein Zugriff, CSRF-Kopf Pflicht', async () => {
   assert.equal((await rufe('GET', '/api/ich')).status, 401);
   const r = await app.inject({ method: 'POST', url: '/api/auth/lokal', payload: { benutzername: 'notfall', passwort: 'x' } });
   assert.equal(r.statusCode, 403);
+});
+
+test('Ersteinrichtung: nur einmal, Passwortregeln, danach geschlossen', async () => {
+  assert.equal((await rufe('GET', '/api/auth/info')).json.einrichtung, true);
+  assert.equal((await rufe('POST', '/api/auth/einrichtung', { benutzername: 'notfall', name: 'Notfall', passwort: 'kurz' })).status, 400);
+  const r = await rufe('POST', '/api/auth/einrichtung', { benutzername: 'notfall', name: 'Notfall', passwort: 'Test-Passwort-123' });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal((await rufe('GET', '/api/auth/info')).json.einrichtung, false);
+  // direkt angemeldet, aber zweiter Faktor fehlt noch
+  assert.equal((await rufe('GET', '/api/ich')).json.mfa.status, 'einrichten');
+  await rufe('POST', '/api/auth/abmelden');
+  cookie = '';
+  const zweiter = await rufe('POST', '/api/auth/einrichtung', { benutzername: 'angreifer', name: 'X', passwort: 'Test-Passwort-456' });
+  assert.equal(zweiter.status, 409);
 });
 
 test('falsches Passwort', async () => {

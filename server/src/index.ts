@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { appBauen } from './app.ts';
-import { startAdminAnlegen } from './auth/lokal.ts';
 import { config } from './config.ts';
 import { alleSchliessen, plattformDb } from './db/index.ts';
 
@@ -13,7 +12,6 @@ if (!config.produktion) {
 
 const app = await appBauen();
 plattformDb(); // legt die Plattform-DB an bzw. migriert sie
-await startAdminAnlegen((msg) => app.log.info(msg));
 
 await app.listen({ port: config.port, host: config.host });
 app.log.info(`Cash & Raus läuft auf ${config.publicUrl} (Daten: ${config.datenVerzeichnis})`);

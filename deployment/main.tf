@@ -87,11 +87,6 @@ resource "azurerm_container_app" "this" {
   revision_mode                = "Single"
   tags                         = local.tags
 
-  secret {
-    name  = "admin-password"
-    value = var.admin_password != "" ? var.admin_password : "-"
-  }
-
   template {
     min_replicas = var.min_replicas
     max_replicas = 1
@@ -121,14 +116,6 @@ resource "azurerm_container_app" "this" {
       env {
         name  = "CR_SESSION_HOURS"
         value = tostring(var.session_hours)
-      }
-      env {
-        name  = "CR_ADMIN_USER"
-        value = var.admin_user
-      }
-      env {
-        name        = "CR_ADMIN_PASSWORD"
-        secret_name = "admin-password"
       }
 
       liveness_probe {

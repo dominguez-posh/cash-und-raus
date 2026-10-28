@@ -19,10 +19,5 @@ export const config = {
   /** Hinter einem TLS-Proxy (Azure): Client-IP ist der letzte Eintrag in X-Forwarded-For, Cookies nur über HTTPS. */
   hinterTlsProxy: flag('CR_BEHIND_TLS_PROXY'),
   sitzungStunden: Number(process.env.CR_SESSION_HOURS ?? 12),
-  /** Erstes lokales Admin-Konto; wird nur angelegt, solange es noch kein lokales Konto gibt. */
-  startAdmin: {
-    benutzername: process.env.CR_ADMIN_USER ?? '',
-    passwort: process.env.CR_ADMIN_PASSWORD ?? '',
-  },
   produktName: process.env.CR_PRODUCT_NAME ?? 'Cash & Raus',
 };

@@ -27,8 +27,8 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 ## Anmeldung
 
 - Mitarbeiter: SAML2 je Mandant (`/saml/<kennung>/login|acs|metadata`), Konfiguration in der Plattform-DB.
-- Admin/Notfall: lokales Konto (Plattform-Admin), Passwort + TOTP oder Passkey Pflicht. Erstes Konto aus
-  `CR_ADMIN_USER`/`CR_ADMIN_PASSWORD`, nur solange noch kein lokales Konto existiert.
+- Admin/Notfall: lokales Konto (Plattform-Admin), Passwort + TOTP oder Passkey Pflicht. Das erste Konto legt die
+  Ersteinrichtung beim ersten Öffnen an (`/api/auth/einrichtung`, nur solange kein lokales Konto existiert).
 - Plattform-Admins können einen Mandanten „betreuen“ (Admin-Rolle im Mandanten, wird protokolliert).
 
 ## Stand
