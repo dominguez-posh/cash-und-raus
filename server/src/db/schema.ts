@@ -97,4 +97,49 @@ export interface MandantDB {
     objekt: string;
     details: string;
   };
+  nummernkreis: {
+    filiale_id: number;
+    jahr: number;
+    letzte: number;
+  };
+  vorgang: {
+    id: Generated<number>;
+    art: 'rechnung' | 'storno';
+    status: 'entwurf' | 'festgeschrieben';
+    nummer: string | null;
+    filiale_id: number;
+    jahr: number | null;
+    laufnummer: number | null;
+    bezug_id: number | null;
+    datum: string;
+    daten: string;
+    summen: string;
+    brutto_cent: number;
+    kunde_suche: string;
+    sachbearbeiter: string;
+    storno_grund: string;
+    erstellt_von: string;
+    erstellt_am: string;
+    geaendert_am: string;
+    festgeschrieben_am: string | null;
+  };
+  zahlung: {
+    id: Generated<number>;
+    vorgang_id: number;
+    zeit: string;
+    betrag_cent: number;
+    mittel: 'bar' | 'ec' | 'ueberweisung';
+    zweck: 'anzahlung' | 'restzahlung' | 'erstattung';
+    kassen_bon: string;
+    person: string;
+  };
+  dokument: {
+    id: Generated<number>;
+    vorgang_id: number;
+    zahlung_id: number | null;
+    art: 'rechnung' | 'quittung';
+    erstellt_am: string;
+    sha256: string;
+    pdf: Buffer;
+  };
 }

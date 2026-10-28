@@ -87,9 +87,6 @@ function Firma({ neuLaden }: { neuLaden: () => Promise<void> }) {
           {feld('bankName', 'Bank')}
           {feld('iban', 'IBAN')}
           {feld('bic', 'BIC')}
-          <Feld titel="USt-Satz in %">
-            <input type="number" min={0} max={100} step={0.1} value={werte.ustSatz} onChange={(ev) => setE({ ...werte, ustSatz: Number(ev.target.value) })} />
-          </Feld>
           <Feld titel="Rechnungsnummer ({F} Filiale, {N} Nummer, {JJ}/{JJJJ} Jahr)">
             <input value={werte.nummernformat} onChange={(ev) => setE({ ...werte, nummernformat: ev.target.value })} />
           </Feld>
@@ -97,9 +94,14 @@ function Firma({ neuLaden }: { neuLaden: () => Promise<void> }) {
             <textarea value={werte.fusstext} onChange={(ev) => setE({ ...werte, fusstext: ev.target.value })} />
           </Feld>
         </div>
+      </div>
+
+      <VerkaufEinstellungen werte={werte} setE={setE} />
+
+      <div className="karte">
         <Meldung>{a.fehler}</Meldung>
         <Meldung art="ok">{a.ok}</Meldung>
-        <div className="knopfreihe">
+        <div className="knopfreihe" style={{ marginTop: 0 }}>
           <button className="primaer" onClick={speichern} disabled={a.laeuft}>Speichern</button>
         </div>
       </div>
@@ -134,6 +136,83 @@ function Firma({ neuLaden }: { neuLaden: () => Promise<void> }) {
         <p className="leise">PNG, JPEG, SVG oder WebP, höchstens 1 MB.</p>
       </div>
     </>
+  );
+}
+
+function VerkaufEinstellungen({ werte, setE }: { werte: Einstellungen; setE: (e: Einstellungen) => void }) {
+  const [saetze, setSaetze] = useState(werte.ustSaetze.join(', '));
+  const [zeiten, setZeiten] = useState(werte.lieferzeiten.join('\n'));
+  const rabatte = werte.rabattarten;
+  const setRabatt = (i: number, r: Partial<Einstellungen['rabattarten'][number]>) =>
+    setE({ ...werte, rabattarten: rabatte.map((x, j) => (j === i ? { ...x, ...r } : x)) });
+  const setHinweis = (i: number, text: string) => setE({ ...werte, hinweise: werte.hinweise.map((x, j) => (j === i ? { ...x, text } : x)) });
+  return (
+    <div className="karte">
+      <h2>Verkauf</h2>
+      <div className="raster">
+        <Feld titel="Wählbare USt-Sätze in % (mit Komma getrennt)">
+          <input
+            value={saetze}
+            onChange={(ev) => {
+              setSaetze(ev.target.value);
+              const liste = ev.target.value.split(/[,;\s]+/).filter(Boolean).map(Number).filter((n) => Number.isFinite(n));
+              setE({ ...werte, ustSaetze: liste });
+            }}
+          />
+        </Feld>
+        <Feld titel="Standardsatz (neue Artikel, Lieferung, Montage)">
+          <select value={werte.ustSatz} onChange={(ev) => setE({ ...werte, ustSatz: Number(ev.target.value) })}>
+            {[...new Set([werte.ustSatz, ...werte.ustSaetze])].map((s) => <option key={s} value={s}>{s} %</option>)}
+          </select>
+        </Feld>
+        <Feld titel="Lieferzeitfenster (eines je Zeile)" breit>
+          <textarea
+            value={zeiten}
+            onChange={(ev) => {
+              setZeiten(ev.target.value);
+              setE({ ...werte, lieferzeiten: ev.target.value.split('\n').map((z) => z.trim()).filter(Boolean) });
+            }}
+          />
+        </Feld>
+      </div>
+
+      <h3 style={{ marginTop: 16 }}>Rabattarten</h3>
+      <p className="leise">Werden im Verkauf als Knopf angeboten und gelten für die Artikel, nicht für Lieferung und Montage.</p>
+      <table>
+        <thead><tr><th>Kürzel</th><th>Name</th><th>%</th><th /></tr></thead>
+        <tbody>
+          {rabatte.map((r, i) => (
+            <tr key={i}>
+              <td><input value={r.kuerzel} onChange={(ev) => setRabatt(i, { kuerzel: ev.target.value })} style={{ maxWidth: 100 }} /></td>
+              <td><input value={r.name} onChange={(ev) => setRabatt(i, { name: ev.target.value })} /></td>
+              <td><input type="number" min={1} max={100} value={r.prozent} onChange={(ev) => setRabatt(i, { prozent: Number(ev.target.value) })} style={{ maxWidth: 90 }} /></td>
+              <td><button className="gefahr" onClick={() => setE({ ...werte, rabattarten: rabatte.filter((_, j) => j !== i) })}>Entfernen</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="knopfreihe">
+        <button onClick={() => setE({ ...werte, rabattarten: [...rabatte, { kuerzel: '', name: '', prozent: 10 }] })}>Rabattart hinzufügen</button>
+      </div>
+
+      <h3 style={{ marginTop: 16 }}>Hinweistexte zu Artikeln</h3>
+      <p className="leise">Im Verkauf je Artikel ankreuzbar; der Text steht dann mit Kennzeichen auf Rechnung und Lieferschein.</p>
+      <div className="stapel">
+        {werte.hinweise.map((h, i) => (
+          <Feld key={h.zeichen} titel={`(${h.zeichen})`}>
+            <textarea value={h.text} onChange={(ev) => setHinweis(i, ev.target.value)} style={{ minHeight: 56 }} />
+          </Feld>
+        ))}
+      </div>
+      <div className="knopfreihe">
+        {werte.hinweise.length < 3 && (
+          <button onClick={() => setE({ ...werte, hinweise: [...werte.hinweise, { zeichen: '*'.repeat(werte.hinweise.length + 1), text: '' }] })}>Hinweis hinzufügen</button>
+        )}
+        {werte.hinweise.length > 0 && (
+          <button className="gefahr" onClick={() => setE({ ...werte, hinweise: werte.hinweise.slice(0, -1) })}>Letzten Hinweis entfernen</button>
+        )}
+      </div>
+    </div>
   );
 }
 

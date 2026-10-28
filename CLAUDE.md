@@ -36,3 +36,7 @@ Plan, Entscheidungen und Stufen: `docs/PLAN.md`. Deployment: `deployment/README.
 - 2026-10-28: Altsystem analysiert, Plan abgestimmt.
 - 2026-10-28: Stufe 1 gebaut (SAML, lokaler Admin mit MFA, Mandanten, Filialen mit IP-Erkennung, Benutzer, Branding,
   Terraform + Workflows). Tests grün. Noch nicht committet/ausgerollt; SAML noch nicht gegen echtes Entra getestet.
+- 2026-10-28: Stufe 2 gebaut (ohne E-Mail = 2b): Verkauf in Schritten (`src/seiten/Verkauf.tsx`), Vorgang/Suche
+  (`Vorgang.tsx`), Logik `server/src/verkauf.ts`, PDFs `server/src/pdf.ts` (pdfmake 0.3.11, nur Standardschriften),
+  Berechnung gemeinsam in `shared/verkauf.ts`, Migration 2 (vorgang, zahlung, dokument, nummernkreis). Tests grün.
+  Offen: PDF-Layout mit echten Firmendaten prüfen, Bedienung auf dem iPad testen, nicht committet.

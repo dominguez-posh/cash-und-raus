@@ -36,6 +36,33 @@ USt 7 %. Entfernungsaufschlag (ab 13 km 1,40 €/km) war geplant, ist im Code de
 | Hosting | Direkt Azure Container Apps (Terraform, GitHub Actions mit OIDC, Image auf ghcr.io); lokal `npm run dev` |
 | Repo | Öffentlich: keine Kundendaten, Logos, IDs oder Secrets committen |
 
+## Bedienung (Mitarbeiter)
+
+- Touch-first für iPad (hoch und quer) und PC: Ziele ≥ 48 px, große Schrift, keine Hover-Menüs, Auswahl per Kachel/Knopf
+  statt Dropdown, Nummernblock für Beträge. Als Web-App auf dem Home-Bildschirm nutzbar.
+- Startseite mit wenigen großen Kacheln je Rolle (Neuer Verkauf, Rechnung suchen, Kasse, Lieferungen heute).
+- Neuer Verkauf als **Schritte**: Kunde → Artikel → Zahlung → Lieferung → Abschluss, je Schritt ein Bildschirm,
+  Summe immer sichtbar, unten Zurück/Weiter.
+- Verwaltung (Admin) darf dichter/tabellarisch sein; Mitarbeiter sehen sie nicht.
+- iPads im Filial-WLAN werden über die öffentliche IP der Filiale zugeordnet; Anmeldung mit dem Firmenkonto.
+
+## Entscheidungen Stufe 2
+
+| Thema | Entscheidung |
+| --- | --- |
+| Rechnungsnummer | Je Filiale und Jahr lückenlos: `B-1-26`, `B-2-26` …, `S-1-26` … (Format je Mandant einstellbar) |
+| Umsatzsteuer | Je Position wählbar, Standard 7 %; endgültige Einstellung nach Rückmeldung des Steuerberaters |
+| Artikel | Freitext; ab Stufe 5 Vorschläge aus dem Artikelstamm im selben Feld |
+| E-Mail | PDF-Versand per Microsoft Graph (`Mail.Send`) als **Stufe 2b** (braucht App-Registrierung je Mandant) |
+| Preise | Brutto in Cent; USt je Satz „darin enthalten“ (wie Altsystem) |
+| Schritte | Kunde → Artikel → **Lieferung → Zahlung** → Abschluss (Lieferkosten müssen vor der Zahlung feststehen) |
+| Rabatt | Rabattarten je Mandant (Kürzel, Name, %), gelten nur für Artikel, nicht für Lieferung/Montage |
+| Zahlung | Anzahlung (bar/EC) beim Festschreiben; Rest bei Lieferung, Abholung oder per Überweisung. Restzahlung = Zahlungsbuchung mit archivierter Quittung, kein eigener Vorgang |
+| Storno | Nur Filialleitung/Admin (statt Tagespasswort), Grund Pflicht; eigener Vorgang mit Nummer aus demselben Nummernkreis, negative Beträge, Erstattung als Zahlung |
+| Archiv | Rechnung/Storno beim Festschreiben, Quittung je Zahlung als PDF in `dokument` (unveränderlich); Lieferschein/Kommission werden jeweils neu erzeugt |
+| Positionen | Als JSON im Vorgang (unveränderlich per Trigger); in Stufe 5 um Artikel-ID ergänzen |
+| Kunden | Noch kein Kundenstamm: Vorschläge aus früheren Vorgängen; eigener Stamm später (DSGVO-Löschkonzept) |
+
 ## Architektur
 
 | Teil | Technik |

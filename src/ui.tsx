@@ -15,15 +15,19 @@ export function useLaden<T>(laden: () => Promise<T>, abh: unknown[] = []) {
   return { daten, fehler, neu };
 }
 
-/** Hash-Routing: #/admin, #/plattform … */
-export function useRoute(): string {
-  const [route, setRoute] = useState(() => location.hash.slice(1) || '/');
+/**
+ * Hash-Routing: #/admin, #/plattform …
+ * `besuch` zählt jeden Hash-Wechsel, auch auf einen Pfad, der per replaceState schon angezeigt wurde
+ * (z. B. „Neuer Verkauf“, während ein neuer Entwurf offen ist).
+ */
+export function useRoute(): { route: string; besuch: number } {
+  const [stand, setStand] = useState(() => ({ route: location.hash.slice(1) || '/', besuch: 0 }));
   useEffect(() => {
-    const f = () => setRoute(location.hash.slice(1) || '/');
+    const f = () => setStand((s) => ({ route: location.hash.slice(1) || '/', besuch: s.besuch + 1 }));
     window.addEventListener('hashchange', f);
     return () => window.removeEventListener('hashchange', f);
   }, []);
-  return route;
+  return stand;
 }
 
 export function Meldung({ art = 'fehler', children }: { art?: 'fehler' | 'ok' | 'hinweis'; children: ReactNode }) {

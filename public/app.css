@@ -141,3 +141,78 @@ tr.klickbar:hover td { background: var(--flaeche-2); }
   .kopf .rechts { margin-left: 0; width: 100%; justify-content: space-between; }
   main { padding: 16px 16px 40px; }
 }
+
+/* ---------- Verkauf (Touch-first: Ziele ≥ 48 px, Eingaben 17 px gegen Zoom auf dem iPad) ---------- */
+.touch input, .touch textarea, .touch select { font-size: 17px; min-height: 48px; }
+.touch label.feld, .touch .feld { font-size: 14px; }
+.feld { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-2); }
+button.gross, .knopf.gross { min-height: 52px; padding: 10px 20px; font-size: 16px; }
+button.primaer.gefahr-voll { background: var(--fehler); border-color: var(--fehler); color: #fff; }
+input.ungueltig { border-color: var(--fehler); background: var(--fehler-hell); }
+.fehlt { color: var(--fehler); }
+.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.wahl { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.wahl button { min-height: 48px; min-width: 56px; padding: 8px 16px; font-size: 16px; font-weight: 500; color: var(--text); }
+.wahl button.aktiv { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-text); font-weight: 650; }
+
+.betrag { display: flex; align-items: center; gap: 8px; }
+.betrag input { text-align: right; max-width: 180px; font-variant-numeric: tabular-nums; }
+.betrag span { color: var(--text-2); font-size: 17px; }
+.menge { display: flex; gap: 6px; align-items: center; }
+.menge input { width: 72px; text-align: center; }
+.menge button { width: 52px; height: 48px; font-size: 22px; justify-content: center; }
+
+.schritte { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 2px; }
+.schritte button { flex: 1 0 auto; min-height: 48px; justify-content: center; border-radius: 99px; color: var(--text-2); font-weight: 500; }
+.schritte button .nr { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--flaeche-2); font-size: 13px; }
+.schritte button.aktiv { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-text); font-weight: 650; }
+.schritte button.aktiv .nr { background: var(--flaeche); color: var(--akzent); }
+.schritte button.erledigt .nr { background: var(--akzent-hell); color: var(--akzent); }
+
+.fussleiste {
+  position: sticky; bottom: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 16px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  background: var(--flaeche); border-top: 1px solid var(--linie); box-shadow: 0 -2px 8px rgb(16 24 40 / 6%);
+}
+.fussleiste button { min-width: 110px; justify-content: center; }
+.fussleiste .summe { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.fussleiste .summe strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+
+.position .pos-kopf { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.position .pos-kopf .leise { margin-left: auto; font-size: 16px; color: var(--text); font-variant-numeric: tabular-nums; }
+.vorschlaege { display: flex; flex-direction: column; gap: 6px; }
+.vorschlaege button { justify-content: flex-start; min-height: 48px; font-weight: 400; text-align: left; }
+
+table.summen tfoot td { border-bottom: 0; padding-top: 4px; padding-bottom: 4px; }
+table.summen tr.gesamt td { font-weight: 700; font-size: 17px; border-top: 1px solid var(--linie); padding-top: 8px; }
+
+.kacheln.haupt { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.knopf-kachel { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 110px; text-decoration: none; color: var(--text); cursor: pointer; font: inherit; text-align: left; }
+.knopf-kachel h3 { font-size: 19px; }
+.knopf-kachel.primaer { background: var(--akzent); border-color: var(--akzent); color: var(--akzent-text); }
+.knopf-kachel:active { transform: scale(.99); }
+.kacheln.aktionen { margin-bottom: 16px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.kacheln.aktionen .knopf-kachel { min-height: 88px; }
+
+.titelzeile { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.titelzeile h1 { margin: 0; }
+.titelzeile .marker { font-size: 14px; padding: 3px 12px; text-decoration: none; }
+
+.suchzeile { display: flex; gap: 8px; margin-bottom: 16px; }
+.suchzeile input { flex: 1; }
+.trefferliste { display: flex; flex-direction: column; gap: 8px; }
+.treffer {
+  display: grid; grid-template-columns: 1.1fr 1.5fr auto; gap: 12px; align-items: center; min-height: 64px;
+  padding: 12px 16px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius);
+  color: var(--text); text-decoration: none; box-shadow: var(--schatten);
+}
+.treffer .marker { margin-left: 6px; }
+.treffer .offen { color: var(--fehler); font-size: 13px; }
+
+@media (max-width: 640px) {
+  .fussleiste { margin: 16px -16px 0; padding-left: 16px; padding-right: 16px; }
+  .fussleiste button { min-width: 0; }
+  .treffer { grid-template-columns: 1fr auto; }
+  .treffer > div:nth-child(2) { grid-column: 1; grid-row: 2; }
+}

@@ -11,6 +11,7 @@ import { config } from './config.ts';
 import { adminRouten } from './routen/admin.ts';
 import { allgemeineRouten } from './routen/allgemein.ts';
 import { plattformRouten } from './routen/plattform.ts';
+import { verkaufRouten } from './routen/verkauf.ts';
 import { HttpFehler, kontextLaden } from './sitzung.ts';
 
 const CSP = [
@@ -69,6 +70,7 @@ export async function appBauen(opts: { logger?: boolean } = {}): Promise<Fastify
   samlRouten(app);
   adminRouten(app);
   plattformRouten(app);
+  verkaufRouten(app);
 
   if (fs.existsSync(config.webVerzeichnis)) {
     await app.register(fastifyStatic, { root: config.webVerzeichnis, index: false, wildcard: false });

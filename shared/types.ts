@@ -62,9 +62,17 @@ export interface Einstellungen {
   iban: string;
   bic: string;
   fusstext: string;
+  /** Standardsatz für neue Positionen, Lieferung und Montage */
   ustSatz: number;
+  /** Wählbare Sätze je Position */
+  ustSaetze: number[];
   /** Platzhalter: {F} Filialkürzel, {N} laufende Nummer, {JJ} / {JJJJ} Jahr */
   nummernformat: string;
+  rabattarten: { kuerzel: string; name: string; prozent: number }[];
+  /** Vorschläge für das Lieferzeitfenster */
+  lieferzeiten: string[];
+  /** Hinweistexte zu Positions-Kennzeichen, z. B. '*' */
+  hinweise: { zeichen: string; text: string }[];
   hatLogo: boolean;
 }
 

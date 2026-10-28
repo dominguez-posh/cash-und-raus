@@ -33,8 +33,14 @@ const EinstellungenDaten = z.object({
   bic: text(15),
   fusstext: text(1000),
   ustSatz: z.number().min(0).max(100),
+  ustSaetze: z.array(z.number().min(0).max(100)).min(1).max(5),
   nummernformat: text(40).refine((s) => s.includes('{N}'), 'Das Nummernformat muss {N} enthalten'),
-});
+  rabattarten: z
+    .array(z.object({ kuerzel: text(10).min(1, 'Rabatt-Kürzel fehlt'), name: text(60).min(1, 'Rabatt-Name fehlt'), prozent: z.number().gt(0).max(100) }))
+    .max(20),
+  lieferzeiten: z.array(text(40).min(1)).max(20),
+  hinweise: z.array(z.object({ zeichen: z.string().trim().regex(/^\*{1,3}$/, 'Kennzeichen: *, ** oder ***'), text: text(500).min(1) })).max(3),
+}).refine((e) => e.ustSaetze.includes(e.ustSatz), { message: 'Der Standardsatz muss unter den wählbaren USt-Sätzen sein', path: ['ustSatz'] });
 
 const FilialDaten = z.object({
   kuerzel: z.string().trim().regex(/^[A-Za-z0-9]{1,5}$/, 'Kürzel: 1–5 Buchstaben oder Ziffern'),

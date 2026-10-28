@@ -18,8 +18,18 @@ export const STANDARD_EINSTELLUNGEN: Omit<Einstellungen, 'hatLogo'> = {
   iban: '',
   bic: '',
   fusstext: 'Vielen Dank für Ihren Einkauf.',
-  ustSatz: 19,
+  ustSatz: 7,
+  ustSaetze: [7, 19],
   nummernformat: '{F}-{N}-{JJ}',
+  rabattarten: [],
+  lieferzeiten: ['08:30 – 12:00 Uhr', '12:00 – 15:00 Uhr', '15:00 – 18:00 Uhr'],
+  hinweise: [
+    { zeichen: '*', text: 'Dieses Gerät hat keinen Schlauch mit Aqua-Stop. Wir empfehlen, ihn gegen einen Schlauch mit Aqua-Stop auszutauschen.' },
+    {
+      zeichen: '**',
+      text: 'Für die Inanspruchnahme einer Gewährleistung muss das Gerät durch einen Fachbetrieb angeschlossen worden sein; ein Nachweis darüber ist vorzulegen.',
+    },
+  ],
 };
 
 const jetzt = () => new Date().toISOString();

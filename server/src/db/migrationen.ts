@@ -115,6 +115,78 @@ export const mandantMigrationen: string[] = [
   CREATE TRIGGER protokoll_kein_delete BEFORE DELETE ON protokoll
     BEGIN SELECT RAISE(ABORT, 'Protokoll ist unveränderlich'); END;
   `,
+  // Stufe 2: Verkauf
+  `
+  -- Laufende Rechnungsnummer je Filiale und Jahr (lückenlos, Vergabe in der Transaktion des Festschreibens)
+  CREATE TABLE nummernkreis (
+    filiale_id INTEGER NOT NULL REFERENCES filiale(id),
+    jahr INTEGER NOT NULL,
+    letzte INTEGER NOT NULL,
+    PRIMARY KEY (filiale_id, jahr)
+  );
+  -- Rechnung oder Storno; Eingaben (Kunde, Positionen, Lieferung, Zahlungsplan) als JSON in daten
+  CREATE TABLE vorgang (
+    id INTEGER PRIMARY KEY,
+    art TEXT NOT NULL CHECK (art IN ('rechnung', 'storno')),
+    status TEXT NOT NULL CHECK (status IN ('entwurf', 'festgeschrieben')),
+    nummer TEXT UNIQUE,
+    filiale_id INTEGER NOT NULL REFERENCES filiale(id),
+    jahr INTEGER,
+    laufnummer INTEGER,
+    bezug_id INTEGER REFERENCES vorgang(id),
+    datum TEXT NOT NULL,
+    daten TEXT NOT NULL,
+    summen TEXT NOT NULL,
+    brutto_cent INTEGER NOT NULL,
+    kunde_suche TEXT NOT NULL DEFAULT '',
+    sachbearbeiter TEXT NOT NULL,
+    storno_grund TEXT NOT NULL DEFAULT '',
+    erstellt_von TEXT NOT NULL,
+    erstellt_am TEXT NOT NULL,
+    geaendert_am TEXT NOT NULL,
+    festgeschrieben_am TEXT
+  );
+  CREATE INDEX vorgang_filiale_datum ON vorgang(filiale_id, datum);
+  -- Je Rechnung höchstens ein Storno
+  CREATE UNIQUE INDEX vorgang_ein_storno ON vorgang(bezug_id) WHERE art = 'storno';
+  -- Festgeschriebene Vorgänge sind unveränderlich (GoBD); Korrektur nur per Storno.
+  CREATE TRIGGER vorgang_fest_kein_update BEFORE UPDATE ON vorgang WHEN OLD.status = 'festgeschrieben'
+    BEGIN SELECT RAISE(ABORT, 'Festgeschriebener Vorgang ist unveränderlich'); END;
+  CREATE TRIGGER vorgang_fest_kein_delete BEFORE DELETE ON vorgang WHEN OLD.status = 'festgeschrieben'
+    BEGIN SELECT RAISE(ABORT, 'Festgeschriebener Vorgang ist unveränderlich'); END;
+
+  CREATE TABLE zahlung (
+    id INTEGER PRIMARY KEY,
+    vorgang_id INTEGER NOT NULL REFERENCES vorgang(id),
+    zeit TEXT NOT NULL,
+    betrag_cent INTEGER NOT NULL,
+    mittel TEXT NOT NULL CHECK (mittel IN ('bar', 'ec', 'ueberweisung')),
+    zweck TEXT NOT NULL CHECK (zweck IN ('anzahlung', 'restzahlung', 'erstattung')),
+    kassen_bon TEXT NOT NULL DEFAULT '',
+    person TEXT NOT NULL
+  );
+  CREATE INDEX zahlung_vorgang ON zahlung(vorgang_id);
+  CREATE TRIGGER zahlung_kein_update BEFORE UPDATE ON zahlung
+    BEGIN SELECT RAISE(ABORT, 'Zahlungen sind unveränderlich'); END;
+  CREATE TRIGGER zahlung_kein_delete BEFORE DELETE ON zahlung
+    BEGIN SELECT RAISE(ABORT, 'Zahlungen sind unveränderlich'); END;
+
+  -- Archivierte PDFs (Rechnung beim Festschreiben, Quittung je Zahlung)
+  CREATE TABLE dokument (
+    id INTEGER PRIMARY KEY,
+    vorgang_id INTEGER NOT NULL REFERENCES vorgang(id),
+    zahlung_id INTEGER REFERENCES zahlung(id),
+    art TEXT NOT NULL CHECK (art IN ('rechnung', 'quittung')),
+    erstellt_am TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    pdf BLOB NOT NULL
+  );
+  CREATE INDEX dokument_vorgang ON dokument(vorgang_id);
+  CREATE TRIGGER dokument_kein_update BEFORE UPDATE ON dokument
+    BEGIN SELECT RAISE(ABORT, 'Dokumente sind unveränderlich'); END;
+  CREATE TRIGGER dokument_kein_delete BEFORE DELETE ON dokument
+    BEGIN SELECT RAISE(ABORT, 'Dokumente sind unveränderlich'); END;
+  `,
 ];
 
 export function migrieren(db: Database.Database, migrationen: string[]): void {

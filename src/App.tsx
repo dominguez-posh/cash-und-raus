@@ -8,6 +8,8 @@ import { Konto } from './seiten/Konto.tsx';
 import { Mfa } from './seiten/Mfa.tsx';
 import { Plattform } from './seiten/Plattform.tsx';
 import { Start } from './seiten/Start.tsx';
+import { darfVerkaufen, VerkaufSeite } from './seiten/Verkauf.tsx';
+import { Suche } from './seiten/Vorgang.tsx';
 import { Meldung, useRoute } from './ui.tsx';
 
 export function App() {
@@ -15,7 +17,7 @@ export function App() {
   const [info, setInfo] = useState<AuthInfo>({ produktName: 'Cash & Raus', einrichtung: false });
   const [fehler, setFehler] = useState<string | null>(null);
   const [filialWahl, setFilialWahl] = useState(false);
-  const route = useRoute();
+  const { route, besuch } = useRoute();
 
   const laden = async () => {
     try {
@@ -65,12 +67,17 @@ export function App() {
   const istAdmin = ich.rollen.includes('admin');
   const nav: [string, string][] = [];
   if (ich.mandant) nav.push(['/', 'Start']);
+  if (ich.mandant && darfVerkaufen(ich)) nav.push(['/verkauf/neu', 'Neuer Verkauf']);
+  if (ich.mandant && ich.rollen.length) nav.push(['/suche', 'Suche']);
   if (ich.mandant && istAdmin) nav.push(['/admin', 'Verwaltung']);
   if (ich.plattformAdmin) nav.push(['/plattform', 'Plattform']);
   if (ich.art === 'lokal') nav.push(['/konto', 'Mein Konto']);
 
+  const vorgangId = /^\/verkauf\/(neu|\d+)$/.exec(route)?.[1];
   let seite;
   if (route === '/konto' && ich.art === 'lokal') seite = <Konto />;
+  else if (vorgangId && ich.mandant) seite = <VerkaufSeite key={`${route}:${besuch}`} ich={ich} id={vorgangId === 'neu' ? null : Number(vorgangId)} />;
+  else if (route === '/suche' && ich.mandant) seite = <Suche />;
   else if (route === '/plattform' && ich.plattformAdmin) seite = <Plattform ich={ich} neuLaden={laden} />;
   else if (route === '/admin' && ich.mandant && istAdmin) seite = <Admin neuLaden={laden} />;
   else if (ich.mandant) seite = <Start ich={ich} />;
